@@ -1,0 +1,126 @@
+{
+    "Sector": {
+        "index_symbol": "^NSEI",
+        "stocks": {
+            "Nifty 50": "^NSEI",
+            "Bank Nifty": "^NSEBANK",
+            "Nifty IT": "^CNXIT",
+            "Nifty Pharma": "^CNXPHARMA",
+            "Nifty FMCG": "^CNXFMCG",
+            "Nifty Auto": "^CNXAUTO",
+            "Nifty Metal": "^CNXMETAL",
+            "Nifty Realty": "^CNXREALTY",
+            "Nifty Infra": "^CNXINFRA"
+        }
+    },
+    "FMCG": {
+        "index_symbol": "^CNXFMCG",
+        "stocks": {
+            "Hindustan Unilever": "HINDUNILVR.NS",
+            "ITC": "ITC.NS",
+            "Nestle India": "NESTLEIND.NS",
+            "Varun Beverages": "VBL.NS",
+            "Britannia Industries": "BRITANNIA.NS",
+            "Godrej Consumer Products": "GODREJCP.NS",
+            "Tata Consumer Products": "TATACONSUM.NS",
+            "United Spirits": "UNITDSPR.NS",
+            "Marico": "MARICO.NS",
+            "Dabur India": "DABUR.NS",
+            "Patanjali Foods": "PATANJALI.NS",
+            "Colgate-Palmolive (India)": "COLPAL.NS",
+            "United Breweries": "UBL.NS",
+            "Radico Khaitan": "RADICO.NS",
+            "Emami": "EMAMILTD.NS"
+        }
+    },
+    "IT": {
+        "index_symbol": "^CNXIT",
+        "stocks": {
+            "TCS": "TCS.NS",
+            "Infosys": "INFY.NS",
+            "HCL Technologies": "HCLTECH.NS",
+            "Wipro": "WIPRO.NS",
+            "LTIMindtree": "LTIM.NS",
+            "Tech Mahindra": "TECHM.NS",
+            "Persistent Systems": "PERSISTENT.NS",
+            "Oracle Financial": "OFSS.NS",
+            "KPIT Technologies": "KPITTECH.NS",
+            "Tata Elxsi": "TATAELXSI.NS"
+        }
+    },
+    "Pharma": {
+        "index_symbol": "^CNXPHARMA",
+        "stocks": {
+            "Sun Pharma": "SUNPHARMA.NS",
+            "Cipla": "CIPLA.NS",
+            "Dr. Reddy's Labs": "DRREDDY.NS",
+            "Divi's Labs": "DIVISLAB.NS",
+            "Torrent Pharma": "TORNTPHARM.NS",
+            "Zydus Lifesciences": "ZYDUSLIFE.NS",
+            "Lupin": "LUPIN.NS",
+            "Aurobindo Pharma": "AUROPHARMA.NS",
+            "Alkem Labs": "ALKEM.NS",
+            "Mankind Pharma": "MANKIND.NS"
+        }
+    },
+    "Auto": {
+        "index_symbol": "^CNXAUTO",
+        "stocks": {
+            "Maruti Suzuki": "MARUTI.NS",
+            "Tata Motors": "TATAMOTORS.NS",
+            "Mahindra & Mahindra": "M&M.NS",
+            "Bajaj Auto": "BAJAJ-AUTO.NS",
+            "Eicher Motors": "EICHERMOT.NS",
+            "TVS Motor": "TVSMOTOR.NS",
+            "Hero MotoCorp": "HEROMOTOCO.NS",
+            "Bharat Forge": "BHARATFORG.NS",
+            "Samvardhana Motherson": "MOTHERSON.NS",
+            "Ashok Leyland": "ASHOKLEY.NS"
+        }
+    },
+    "Metal": {
+        "index_symbol": "^CNXMETAL",
+        "stocks": {
+            "Tata Steel": "TATASTEEL.NS",
+            "JSW Steel": "JSWSTEEL.NS",
+            "Hindalco": "HINDALCO.NS",
+            "Vedanta": "VEDL.NS",
+            "Jindal Steel & Power": "JINDALSTEL.NS",
+            "Coal India": "COALINDIA.NS",
+            "NMDC": "NMDC.NS",
+            "SAIL": "SAIL.NS",
+            "APL Apollo": "APLAPOLLO.NS",
+            "National Aluminium": "NATIONALUM.NS"
+        }
+    },
+    "Realty": {
+        "index_symbol": "^CNXREALTY",
+        "stocks": {
+            "DLF": "DLF.NS",
+            "Macrotech Developers (Lodha)": "LODHA.NS",
+            "Godrej Properties": "GODREJPROP.NS",
+            "Prestige Estates": "PRESTIGE.NS",
+            "Oberoi Realty": "OBEROIRLTY.NS",
+            "Phoenix Mills": "PHOENIXLTD.NS",
+            "Brigade Enterprises": "BRIGADE.NS",
+            "Sobha": "SOBHA.NS",
+            "Signature Global": "SIGNATURE.NS",
+            "Mahindra Lifespace": "MAHLIFE.NS"
+        }
+    },
+    "Infra": {
+        "index_symbol": "^CNXINFRA",
+        "stocks": {
+            "Reliance Industries": "RELIANCE.NS",
+            "Larsen & Toubro": "LT.NS",
+            "Bharti Airtel": "BHARTIARTL.NS",
+            "NTPC": "NTPC.NS",
+            "Power Grid": "POWERGRID.NS",
+            "ONGC": "ONGC.NS",
+            "Adani Ports": "ADANIPORTS.NS",
+            "UltraTech Cement": "ULTRACEMCO.NS",
+            "Grasim Industries": "GRASIM.NS",
+            "GAIL": "GAIL.NS"
+        }
+    }
+}
