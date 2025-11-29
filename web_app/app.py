@@ -3,15 +3,20 @@ import sys
 import os
 import base64
 from io import BytesIO
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 # Add parent directory to path to import analysis modules
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lagging_indicator_analysis'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'leading_indicator_analysis'))
 
 from macd_analysis import run_analysis as run_macd_analysis
 from supertrend_analysis import run_analysis as run_supertrend_analysis
 from bollinger_band_analysis import run_analysis as run_bollinger_analysis
 from crossover_analysis import run_analysis as run_crossover_analysis
 from donchian_channel_analysis import run_analysis as run_donchian_analysis
+from rsi_divergence_analysis import run_analysis as run_rsi_analysis
 
 app = Flask(__name__)
 
@@ -32,6 +37,7 @@ def analyze():
         bollinger_config = data.get('bollinger_config', {})
         crossover_config = data.get('crossover_config', {})
         donchian_config = data.get('donchian_config', {})
+        rsi_config = data.get('rsi_config', {})
         
         if not ticker:
             return jsonify({'success': False, 'error': 'Please enter a valid ticker symbol'})
@@ -228,6 +234,45 @@ def analyze():
                 'breakout_signal': donchian_results['breakout_signal'],
                 'signals': signals_formatted,
                 'chart_image': donchian_image_base64
+            }
+
+        # Run RSI Divergence Analysis
+        if analysis_type in ['all', 'rsi']:
+            print(f"Starting RSI analysis for {ticker}...")
+            rsi_results = run_rsi_analysis(ticker=ticker, show_plot=False, config=rsi_config)
+            print(f"RSI analysis result: {rsi_results['success']}")
+            
+            if not rsi_results['success']:
+                return jsonify(rsi_results)
+            
+            # Convert RSI figure to base64 image
+            rsi_fig = rsi_results['figure']
+            rsi_buf = BytesIO()
+            rsi_fig.savefig(rsi_buf, format='png', dpi=100, bbox_inches='tight')
+            rsi_buf.seek(0)
+            rsi_image_base64 = base64.b64encode(rsi_buf.getvalue()).decode('utf-8')
+            rsi_buf.close()
+            print("RSI chart generated successfully")
+            
+            # Close the figure
+            import matplotlib.pyplot as plt
+            plt.close(rsi_fig)
+            
+            # Format divergences
+            divergences_formatted = []
+            if rsi_results['divergences']:
+                for div in rsi_results['divergences']:
+                    divergences_formatted.append({
+                        'type': div['Type'],
+                        'date': div['Date'].strftime('%Y-%m-%d'),
+                        'price': float(div['Price']),
+                        'details': div['Details']
+                    })
+            
+            response_data['rsi'] = {
+                'current_rsi': round(rsi_results['current_rsi'], 2),
+                'divergences': divergences_formatted,
+                'chart_image': rsi_image_base64
             }
         
         return jsonify(response_data)

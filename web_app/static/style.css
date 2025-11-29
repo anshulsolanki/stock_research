@@ -215,12 +215,57 @@ header h1 {
     color: white;
 }
 
-/* Tabs */
+/* Main Tabs */
+.main-tabs {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+    border-bottom: 3px solid #e0e0e0;
+    padding-bottom: 5px;
+    justify-content: center;
+}
+
+.main-tab-button {
+    padding: 12px 25px;
+    background: transparent;
+    border: none;
+    border-bottom: 4px solid transparent;
+    color: #555;
+    font-size: 1.1em;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.main-tab-button:hover {
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 8px 8px 0 0;
+}
+
+.main-tab-button.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+}
+
+.main-tab-content {
+    display: none;
+    animation: fadeIn 0.4s ease;
+}
+
+.main-tab-content.active {
+    display: block;
+}
+
+/* Sub Tabs (Existing Tabs) */
 .tabs {
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
     border-bottom: 2px solid #f0f0f0;
+    padding-left: 10px;
 }
 
 .tab-button {
@@ -256,11 +301,29 @@ header h1 {
 @keyframes fadeIn {
     from {
         opacity: 0;
+        transform: translateY(10px);
     }
 
     to {
         opacity: 1;
+        transform: translateY(0);
     }
+}
+
+/* Placeholder Content */
+.placeholder-content {
+    text-align: center;
+    padding: 60px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 2px dashed #e0e0e0;
+    color: #888;
+}
+
+.placeholder-content h3 {
+    font-size: 1.5em;
+    margin-bottom: 15px;
+    color: #666;
 }
 
 .divergence-section {
@@ -317,7 +380,9 @@ header h1 {
 #macdChartImage,
 #supertrendChartImage,
 #bollingerChartImage,
-#crossoverChartImage {
+#crossoverChartImage,
+#donchianChartImage,
+#rsiChartImage {
     width: 100%;
     max-height: 70vh;
     /* Limit height to 70% of viewport height */

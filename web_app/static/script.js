@@ -1,18 +1,53 @@
-// Tab switching function
+// Tab Switching Logic
+function showMainTab(tabName) {
+    // Hide all main tab contents
+    document.querySelectorAll('.main-tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+
+    // Deactivate all main tab buttons
+    document.querySelectorAll('.main-tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Show selected main tab content
+    const selectedSection = document.getElementById(tabName + '-section');
+    if (selectedSection) {
+        selectedSection.classList.add('active');
+    }
+
+    // Activate selected main tab button
+    // Find the button that calls showMainTab with the current tabName
+    const buttons = document.querySelectorAll('.main-tab-button');
+    buttons.forEach(btn => {
+        if (btn.getAttribute('onclick').includes(`'${tabName}'`)) {
+            btn.classList.add('active');
+        }
+    });
+}
+
 function showTab(tabName) {
-    // Hide all tabs
-    const tabs = document.querySelectorAll('.tab-content');
-    tabs.forEach(tab => tab.classList.remove('active'));
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
 
-    // Remove active from all buttons
-    const buttons = document.querySelectorAll('.tab-button');
-    buttons.forEach(btn => btn.classList.remove('active'));
+    // Deactivate all tab buttons
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
 
-    // Show selected tab
+    // Show selected tab content
     document.getElementById(tabName + '-tab').classList.add('active');
 
-    // Activate selected button
-    event.target.classList.add('active');
+    // Activate selected tab button
+    // Find the button that calls showTab with the current tabName
+    const buttons = document.querySelectorAll('.tab-button');
+    buttons.forEach(btn => {
+        if (btn.getAttribute('onclick').includes(`'${tabName}'`)) {
+            btn.classList.add('active');
+        }
+    });
 }
 
 function toggleConfig(panelId) {
@@ -50,6 +85,9 @@ async function analyzeStock(analysisType = 'all') {
         originalBtnText = activeBtn.textContent;
     } else if (analysisType === 'donchian') {
         activeBtn = document.querySelector('#donchian-tab .run-analysis-btn');
+        originalBtnText = activeBtn.textContent;
+    } else if (analysisType === 'rsi') {
+        activeBtn = document.querySelector('#rsi-tab .run-analysis-btn');
         originalBtnText = activeBtn.textContent;
     }
 
@@ -124,6 +162,18 @@ async function analyzeStock(analysisType = 'all') {
             WINDOW: parseInt(document.getElementById('donchianWindow').value) || 20,
             INTERVAL: document.getElementById('donchianInterval').value || '1d',
             LOOKBACK_PERIODS: parseInt(document.getElementById('donchianLookback').value) || 730
+        };
+    }
+
+    // Added for RSI config
+    if (analysisType === 'all' || analysisType === 'rsi') {
+        requestBody.rsi_config = {
+            PERIOD: parseInt(document.getElementById('rsiPeriod').value) || 14,
+            ORDER: parseInt(document.getElementById('rsiOrder').value) || 5,
+            INTERVAL: document.getElementById('rsiInterval').value || '1wk',
+            LOOKBACK_PERIODS: parseInt(document.getElementById('rsiLookback').value) || 730,
+            RSI_OVERBOUGHT: parseInt(document.getElementById('rsiOverbought').value) || 70,
+            RSI_OVERSOLD: parseInt(document.getElementById('rsiOversold').value) || 30
         };
     }
 
@@ -395,6 +445,44 @@ function displayResults(data, analysisType) {
 
         // Update Donchian chart
         document.getElementById('donchianChartImage').src = 'data:image/png;base64,' + donchian.chart_image;
+    }
+
+    // ========== RSI Divergence Data ==========
+    if (data.rsi && (analysisType === 'all' || analysisType === 'rsi')) {
+        const rsi = data.rsi;
+
+        // Update Current RSI metric
+        document.getElementById('rsiCurrent').textContent = rsi.current_rsi ? rsi.current_rsi.toFixed(2) : '--';
+
+        // Update RSI chart
+        if (rsi.chart_image) {
+            document.getElementById('rsiChartImage').src = 'data:image/png;base64,' + rsi.chart_image;
+        }
+
+        // Update RSI divergences list
+        const rsiDivergenceList = document.getElementById('rsiDivergenceList');
+        const rsiDivergenceSection = document.getElementById('rsiDivergenceSection');
+        rsiDivergenceList.innerHTML = '';
+
+        if (rsi.divergences && rsi.divergences.length > 0) {
+            rsiDivergenceSection.style.display = 'block';
+
+            // Show divergences in reverse order (most recent first)
+            rsi.divergences.slice().reverse().forEach(divData => {
+                const div = document.createElement('div');
+                div.className = `divergence-item ${divData.type.includes('Bullish') ? 'bullish' : 'bearish'}`;
+                div.innerHTML = `
+                    <div class="divergence-type ${divData.type.includes('Bullish') ? 'bullish' : 'bearish'}">${divData.type}</div>
+                    <div class="divergence-details">
+                        Date: ${divData.date} | Price: ${divData.price.toFixed(2)}
+                        <br>${divData.details}
+                    </div>
+                `;
+                rsiDivergenceList.appendChild(div);
+            });
+        } else {
+            rsiDivergenceSection.style.display = 'none';
+        }
     }
 
     // Show results
