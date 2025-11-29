@@ -1,3 +1,145 @@
+"""
+RSI DIVERGENCE ANALYSIS TOOL
+=============================
+
+PURPOSE:
+--------
+This module performs comprehensive RSI (Relative Strength Index) Divergence analysis, a powerful
+leading indicator used in technical analysis. RSI Divergence helps identify:
+- Potential trend reversals before they occur
+- Momentum shifts in price action
+- Overbought and oversold conditions
+- Early warning signals for price direction changes
+
+WHAT IT DOES:
+-------------
+1. **RSI Calculation**: Computes RSI using Wilder's Smoothing Method
+   - Matches industry-standard implementations (TradingView, Yahoo Finance, etc.)
+   - Uses exponential moving average (EMA) with alpha = 1/period
+   - Provides normalized 0-100 scale momentum indicator
+
+2. **Divergence Detection**: Identifies price-RSI discrepancies
+   - **Bullish Divergence**: Price makes lower low BUT RSI makes higher low
+     → Suggests potential upward reversal (momentum building despite price drop)
+   - **Bearish Divergence**: Price makes higher high BUT RSI makes lower high
+     → Suggests potential downward reversal (momentum weakening despite price rise)
+
+3. **Peak & Trough Analysis**:
+   - Uses scipy.signal.argrelextrema to find local extrema
+   - Scans ALL consecutive peaks and troughs across the entire dataset
+   - Configurable order parameter for sensitivity adjustment
+
+4. **Overbought/Oversold Zones**:
+   - Default: RSI > 70 indicates overbought conditions
+   - Default: RSI < 30 indicates oversold conditions
+   - Visual shading on charts for easy identification
+
+5. **Visual Analysis**: Generates dual-panel charts showing:
+   - Price action with marked peaks, troughs, and divergence points
+   - RSI indicator with overbought/oversold zones and divergence markers
+
+METHODOLOGY:
+------------
+RSI Formula (Wilder's Smoothing Method):
+- Calculate price changes: delta = Close(t) - Close(t-1)
+- Separate gains and losses: gain = delta if positive, loss = -delta if negative
+- Apply Wilder's smoothing: avg_gain = EMA(gain, alpha=1/period), avg_loss = EMA(loss, alpha=1/period)
+- Calculate RS: RS = avg_gain / avg_loss
+- Calculate RSI: RSI = 100 - (100 / (1 + RS))
+
+Divergence Detection Algorithm:
+1. Find all local peaks in price and RSI using configurable order parameter
+2. Find all local troughs in price and RSI
+3. For each consecutive pair of peaks: check if price HH but RSI LH (bearish divergence)
+4. For each consecutive pair of troughs: check if price LL but RSI HL (bullish divergence)
+5. Record divergence type, date, price, and detailed metrics
+
+KEY METRICS:
+------------
+- Current RSI: Latest RSI value (0-100 scale)
+- Divergences: List of all detected bullish/bearish divergences with:
+  * Divergence type (Bullish/Bearish)
+  * Date and price of divergence point
+  * Detailed comparison of price and RSI movements
+- Peaks and Troughs: All identified local extrema for visual reference
+
+CONFIGURATION:
+--------------
+Default parameters (customizable via RSI_CONFIG or function arguments):
+- PERIOD: 14 (standard RSI calculation period)
+- ORDER: 5 (sensitivity for peak/trough detection - higher = less sensitive)
+- RSI_OVERBOUGHT: 70 (threshold for overbought zone)
+- RSI_OVERSOLD: 30 (threshold for oversold zone)
+- INTERVAL: '1d' (daily data; also supports '1wk', '1mo', '1h', '15m', etc.)
+- LOOKBACK_PERIODS: 730 days (2 years of history)
+
+USAGE:
+------
+Run as standalone script:
+    python rsi_divergence_analysis.py
+
+Or import and use programmatically:
+    from rsi_divergence_analysis import run_analysis
+    results = run_analysis(ticker="AAPL", show_plot=True, config={'PERIOD': 14, 'ORDER': 5})
+
+For batch analysis:
+    Set RUN_BATCH=True in RSI_CONFIG and provide tickers_list.json file
+
+OUTPUT:
+-------
+Returns dictionary containing:
+- success: Boolean indicating if analysis completed successfully
+- ticker: Stock ticker symbol
+- current_rsi: Current RSI value
+- divergences: List of detected divergences with detailed information
+- figure: Matplotlib figure object for visualization
+- dataframe: Full DataFrame with Close, RSI, and peak/trough markers
+
+TYPICAL USE CASES:
+------------------
+1. **Reversal Prediction**: Identify potential trend reversals before they occur
+2. **Entry Timing**: Use bullish divergences for long entry signals
+3. **Exit Timing**: Use bearish divergences for exit or short signals
+4. **Confirmation**: Combine with other indicators for stronger signals
+5. **Multi-timeframe Analysis**: Run on different intervals (daily, weekly) for comprehensive view
+6. **Overbought/Oversold**: Identify extreme conditions ripe for mean reversion
+
+INTERPRETATION GUIDE:
+---------------------
+**Bullish Divergence (Price LL, RSI HL):**
+- "Hidden strength" - Price falling but momentum recovering
+- Suggests selling pressure weakening
+- Often precedes upward price reversal
+- Best when RSI is in oversold zone (<30)
+
+**Bearish Divergence (Price HH, RSI LH):**
+- "Hidden weakness" - Price rising but momentum fading
+- Suggests buying pressure weakening
+- Often precedes downward price reversal
+- Best when RSI is in overbought zone (>70)
+
+**No Divergence:**
+- Price and RSI moving in harmony
+- Trend likely to continue
+- Wait for divergence or other signals
+
+TECHNICAL NOTES:
+----------------
+- Uses Wilder's Smoothing (EMA) for accurate RSI calculation
+- Matplotlib backend set to 'Agg' when called from web app (Flask compatibility)
+- Chart legends removed from price plot to prevent obstruction
+- All divergences across the dataset are detected, not just the most recent ones
+- Peak/trough detection uses scipy.signal.argrelextrema with configurable order
+
+DEPENDENCIES:
+-------------
+- pandas: Data manipulation and analysis
+- numpy: Numerical operations
+- yfinance: Historical stock data fetching
+- matplotlib: Chart visualization
+- scipy.signal: Peak and trough detection
+"""
+
 import pandas as pd
 import numpy as np
 import yfinance as yf
