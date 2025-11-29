@@ -63,7 +63,7 @@ KEY METRICS:
 
 CONFIGURATION:
 --------------
-Reads stock lists and index symbols from '../data/tickers_batch.json' with structure:
+Reads stock lists and index symbols from 'data/tickers_grouped.json' with structure:
 {
     "IT": {
         "index_symbol": "^CNXIT",
@@ -366,7 +366,7 @@ import os
 
 if __name__ == "__main__":
     # Load configurations from JSON file
-    config_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'tickers_batch.json')
+    config_file = os.path.join(os.path.dirname(__file__), 'data', 'tickers_grouped.json')
     
     if not os.path.exists(config_file):
         print(f"Error: Configuration file {config_file} not found.")
