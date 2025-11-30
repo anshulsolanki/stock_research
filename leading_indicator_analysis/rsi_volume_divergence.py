@@ -1,17 +1,250 @@
+"""
+RSI-VOLUME DIVERGENCE ANALYSIS TOOL
+====================================
+
+PURPOSE:
+--------
+This module performs comprehensive RSI-Volume Divergence analysis, a powerful triple-indicator system
+that combines price action, RSI momentum, and volume analysis to identify high-conviction reversal signals.
+
+RSI-Volume Divergence occurs when price + RSI momentum move in one direction, but volume moves in the 
+opposite direction, revealing hidden strength or weakness in the market.
+
+WHAT IT DOES:
+-------------
+1. **Triple Divergence Detection**: Analyzes three indicators simultaneously
+   - Price action (highs and lows)
+   - RSI momentum (Wilder's Smoothing Method)
+   - Volume trends (using Volume Moving Averages)
+
+2. **Bullish RSI-Volume Divergence**:
+   - Price makes lower lows (LL) - downtrend continuing
+   - RSI makes higher lows (HL) - momentum recovering
+   - Volume decreases during fall - sellers losing strength
+   → **Signal**: Early bullish reversal (buyers accumulating quietly)
+   → **Interpretation**: Selling pressure exhausting, potential bottom forming
+
+3. **Bearish RSI-Volume Divergence**:
+   - Price makes higher highs (HH) - uptrend continuing
+   - RSI makes lower highs (LH) - momentum fading
+   - Volume falls on rallies - buyers losing conviction
+   → **Signal**: Potential topping/reversal (weak rally)
+   → **Interpretation**: Buying pressure weakening, potential top forming
+
+4. **Early Trend Reversal Signals**:
+   - Identifies strongest confluence signals
+   - Price at new extreme + RSI divergence + volume confirmation
+   - Highest conviction turning points
+
+5. **Volume Analysis**:
+   - Calculates Volume SMA-20 (short-term volume trend)
+   - Calculates Volume SMA-50 (long-term accumulation/distribution)
+   - Compares current volume against both MAs for confirmation
+
+6. **Visual Analysis**: Generates three-panel charts showing:
+   - Price action with marked peaks, troughs, and divergence points
+   - RSI indicator with overbought/oversold zones
+   - Volume bars with moving averages and trend indicators
+
+METHODOLOGY:
+------------
+RSI Calculation (Wilder's Smoothing Method):
+- Calculate price changes: delta = Close(t) - Close(t-1)
+- Separate gains and losses
+- Apply Wilder's smoothing: EMA with alpha = 1/period
+- Calculate RS = avg_gain / avg_loss
+- Calculate RSI = 100 - (100 / (1 + RS))
+
+Volume Moving Averages:
+- Volume MA-20: Short-term volume trend (recent accumulation/distribution)
+- Volume MA-50: Long-term volume baseline (institutional activity)
+
+Bullish RSI-Volume Divergence Detection:
+1. Find all consecutive price troughs (local lows)
+2. For each consecutive pair of troughs:
+   a. Check if price LL: current_price < previous_price
+   b. Check if RSI HL: current_rsi > previous_rsi
+   c. Check if volume decreasing: current_volume < previous_volume
+3. If all three conditions met → Bullish RSI-Volume Divergence
+4. Record divergence with full details
+
+Bearish RSI-Volume Divergence Detection:
+1. Find all consecutive price peaks (local highs)
+2. For each consecutive pair of peaks:
+   a. Check if price HH: current_price > previous_price
+   b. Check if RSI LH: current_rsi < previous_rsi
+   c. Check if volume decreasing: current_volume < previous_volume
+3. If all three conditions met → Bearish RSI-Volume Divergence
+4. Record divergence with full details
+
+Early Reversal Identification:
+- Look for divergences where volume shrinks significantly
+- Prioritize divergences in overbought/oversold RSI zones
+- Flag highest-conviction signals for user attention
+
+WHY COMBINE RSI + VOLUME?
+--------------------------
+**Standard Divergence (Price vs RSI):**
+- Shows momentum weakness/strength
+- Indicates potential reversal
+- BUT: Doesn't show conviction behind the move
+
+**Price + Volume Divergence:**
+- Shows supply-demand shift
+- Reveals institutional activity
+- BUT: Doesn't capture momentum dynamics
+
+**Both Together (RSI-Volume Divergence):**
+- Momentum reversal + Supply-demand shift
+- Higher conviction turning point
+- Reduces false signals
+- Catches reversals before they're obvious
+
+KEY METRICS:
+------------
+- Current RSI: Latest RSI value (0-100 scale)
+- Current Volume: Latest volume bar
+- Volume MA-20: 20-period volume moving average
+- Volume MA-50: 50-period volume moving average
+- Bullish Divergences: List of all detected bullish RSI-volume divergences
+- Bearish Divergences: List of all detected bearish RSI-volume divergences
+- Early Reversals: Highest-conviction reversal signals
+- Peaks and Troughs: All identified local extrema
+
+CONFIGURATION:
+--------------
+Default parameters (customizable via RSI_VOLUME_CONFIG or function arguments):
+- RSI_PERIOD: 14 (standard RSI calculation period)
+- VOLUME_MA_SHORT: 20 (short-term volume trend)
+- VOLUME_MA_LONG: 50 (long-term volume baseline)
+- ORDER: 5 (sensitivity for peak/trough detection)
+- RSI_OVERBOUGHT: 70 (threshold for overbought zone)
+- RSI_OVERSOLD: 30 (threshold for oversold zone)
+- INTERVAL: '1d' (daily data; also supports '1wk', '1mo', '1h', '15m', etc.)
+- LOOKBACK_PERIODS: 730 days (2 years of history)
+
+USAGE:
+------
+Run as standalone script:
+    python rsi_volume_divergence.py
+
+Or import and use programmatically:
+    from rsi_volume_divergence import run_analysis
+    results = run_analysis(ticker="AAPL", show_plot=True, config={'RSI_PERIOD': 14})
+
+OUTPUT:
+-------
+Returns dictionary containing:
+- success: Boolean indicating if analysis completed successfully
+- ticker: Stock ticker symbol
+- current_rsi: Current RSI value
+- current_volume: Latest volume
+- volume_ma_20: 20-period volume MA
+- volume_ma_50: 50-period volume MA
+- bullish_divergences: List of bullish RSI-volume divergences
+- bearish_divergences: List of bearish RSI-volume divergences
+- early_reversals: High-conviction reversal signals
+- figure: Matplotlib figure object for visualization
+- dataframe: Full DataFrame with all calculated indicators
+
+TYPICAL USE CASES:
+------------------
+1. **Early Reversal Detection**: Catch trend reversals before they're obvious
+2. **Confirmation Tool**: Validate other technical signals with volume context
+3. **Entry Timing**: Use bullish divergences for long entry with high conviction
+4. **Exit Timing**: Use bearish divergences for exit or short signals
+5. **Risk Management**: Avoid buying into rallies with falling volume
+6. **Multi-timeframe Analysis**: Run on different intervals for comprehensive view
+
+INTERPRETATION GUIDE:
+---------------------
+**Bullish RSI-Volume Divergence:**
+- "Hidden accumulation" - Smart money buying quietly
+- Price falling but momentum recovering + volume drying up
+- Sellers exhausted, buyers stepping in
+- **Best when**: RSI < 30 (oversold) and volume well below MA-50
+- **Action**: Consider long positions, watch for confirmation
+
+**Bearish RSI-Volume Divergence:**
+- "Hidden distribution" - Smart money exiting quietly
+- Price rising but momentum fading + volume decreasing
+- Buyers losing conviction, sellers preparing
+- **Best when**: RSI > 70 (overbought) and volume below MA-20
+- **Action**: Consider taking profits, watch for breakdown
+
+**Early Reversal Signal:**
+- All three indicators aligning perfectly
+- Volume shrinks significantly (< 50% of MA-50)
+- RSI divergence clear and strong
+- **Action**: Highest conviction signal - strong reversal likely
+
+**No Divergence:**
+- Price, RSI, and volume all trending together
+- Trend likely to continue
+- Wait for divergence or other signals
+
+TECHNICAL NOTES:
+----------------
+- Uses Wilder's Smoothing (EMA) for accurate RSI calculation
+- Volume comparison uses both current volume and volume MAs
+- Matplotlib backend set to 'Agg' when called from web app
+- Three-panel chart with synchronized x-axis for easy analysis
+- All divergences across dataset detected, not just most recent
+- Peak/trough detection uses scipy.signal.argrelextrema
+
+DEPENDENCIES:
+-------------
+- pandas: Data manipulation and analysis
+- numpy: Numerical operations
+- yfinance: Historical stock data fetching
+- matplotlib: Chart visualization
+- scipy.signal: Peak and trough detection
+"""
+
 import pandas as pd
 import numpy as np
 import yfinance as yf
+import matplotlib
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
-from scipy import stats
 from scipy.signal import argrelextrema
 
-# --- Data Fetching ---
-def fetch_data(ticker, interval='1d', days_back=365):
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=days_back)
+# Configuration
+RSI_VOLUME_CONFIG = {
+    # RSI Parameters
+    'RSI_PERIOD': 14,
+    'ORDER': 5,
+    'RSI_OVERBOUGHT': 70,
+    'RSI_OVERSOLD': 30,
     
-    df = yf.download(ticker, start=start_date, end=end_date, interval=interval, progress=False, auto_adjust=False, multi_level_index=False)
+    # Volume Parameters
+    'VOLUME_MA_SHORT': 20,
+    'VOLUME_MA_LONG': 50,
+    
+    # Data Fetching
+    'INTERVAL': '1d',
+    'LOOKBACK_PERIODS': 365 * 2,
+    
+    # Execution Control
+    'DEFAULT_TICKER': 'LT.NS',
+    'BATCH_RELATIVE_PATH': '../data/tickers_list.json',
+    'RUN_BATCH': False
+}
+
+def fetch_data(ticker, config=None):
+    """
+    Fetches historical OHLCV data using config parameters.
+    """
+    cfg = config if config else RSI_VOLUME_CONFIG
+    
+    interval = cfg.get('INTERVAL', RSI_VOLUME_CONFIG['INTERVAL'])
+    lookback_periods = cfg.get('LOOKBACK_PERIODS', RSI_VOLUME_CONFIG['LOOKBACK_PERIODS'])
+    
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=lookback_periods)
+    
+    df = yf.download(ticker, start=start_date, end=end_date, interval=interval, 
+                     progress=False, auto_adjust=False, multi_level_index=False)
     
     if df.empty:
         raise ValueError(f"No data found for {ticker}")
@@ -21,236 +254,460 @@ def fetch_data(ticker, interval='1d', days_back=365):
         
     return df
 
-# --- RSI Logic ---
-def calculate_rsi(df, period=14):
+def calculate_rsi(df, config=None):
+    """
+    Calculates the Relative Strength Index (RSI) using Wilder's Smoothing Method.
+    
+    This matches the standard RSI calculation used by TradingView, Yahoo Finance, and other platforms.
+    Wilder's smoothing is essentially an EMA with alpha = 1/period.
+    """
+    cfg = config if config else RSI_VOLUME_CONFIG
+    period = cfg.get('RSI_PERIOD', RSI_VOLUME_CONFIG['RSI_PERIOD'])
+    
+    # Calculate price changes
     delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-
-    rs = gain / loss
+    
+    # Separate gains and losses
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    
+    # Use Wilder's smoothing method (EMA with alpha = 1/period)
+    avg_gain = gain.ewm(alpha=1/period, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1/period, adjust=False).mean()
+    
+    # Calculate RS and RSI
+    rs = avg_gain / avg_loss
     df['RSI'] = 100 - (100 / (1 + rs))
+    
     return df
 
-def detect_rsi_divergence(df, order=5):
+def calculate_volume_ma(df, config=None):
+    """
+    Calculates Volume Moving Averages for trend analysis.
+    
+    Volume MA-20: Short-term volume trend
+    Volume MA-50: Long-term accumulation/distribution baseline
+    """
+    cfg = config if config else RSI_VOLUME_CONFIG
+    ma_short = cfg.get('VOLUME_MA_SHORT', RSI_VOLUME_CONFIG['VOLUME_MA_SHORT'])
+    ma_long = cfg.get('VOLUME_MA_LONG', RSI_VOLUME_CONFIG['VOLUME_MA_LONG'])
+    
+    df['Volume_MA_20'] = df['Volume'].rolling(window=ma_short).mean()
+    df['Volume_MA_50'] = df['Volume'].rolling(window=ma_long).mean()
+    
+    return df
+
+def detect_rsi_volume_divergence(df, config=None):
+    """
+    Detects Bullish and Bearish RSI-Volume Divergences.
+    
+    Bullish: Price LL, RSI HL, Volume decreasing
+    Bearish: Price HH, RSI LH, Volume decreasing
+    """
+    cfg = config if config else RSI_VOLUME_CONFIG
+    order = cfg.get('ORDER', RSI_VOLUME_CONFIG['ORDER'])
+     
     # Find local peaks and troughs for Price
-    df['price_peak'] = df.iloc[argrelextrema(df['Close'].values, np.greater_equal, order=order)[0]]['Close']
-    df['price_trough'] = df.iloc[argrelextrema(df['Close'].values, np.less_equal, order=order)[0]]['Close']
+    price_peak_indices = argrelextrema(df['Close'].values, np.greater_equal, order=order)[0]
+    price_trough_indices = argrelextrema(df['Close'].values, np.less_equal, order=order)[0]
     
     # Find local peaks and troughs for RSI
-    df['rsi_peak'] = df.iloc[argrelextrema(df['RSI'].values, np.greater_equal, order=order)[0]]['RSI']
-    df['rsi_trough'] = df.iloc[argrelextrema(df['RSI'].values, np.less_equal, order=order)[0]]['RSI']
+    rsi_peak_indices = argrelextrema(df['RSI'].values, np.greater_equal, order=order)[0]
+    rsi_trough_indices = argrelextrema(df['RSI'].values, np.less_equal, order=order)[0]
     
-    divergences = []
+    # Mark peaks and troughs in dataframe for visualization
+    df['price_peak'] = np.nan
+    df['price_trough'] = np.nan
+    df['rsi_peak'] = np.nan
+    df['rsi_trough'] = np.nan
     
-    # Bearish Divergence (Price HH, RSI LH)
-    price_peaks = df[df['price_peak'].notna()]
-    if len(price_peaks) >= 2:
-        curr_peak = price_peaks.iloc[-1]
-        prev_peak = price_peaks.iloc[-2]
-        curr_rsi = df.loc[curr_peak.name]['RSI']
-        prev_rsi = df.loc[prev_peak.name]['RSI']
+    df.iloc[price_peak_indices, df.columns.get_loc('price_peak')] = df.iloc[price_peak_indices]['Close']
+    df.iloc[price_trough_indices, df.columns.get_loc('price_trough')] = df.iloc[price_trough_indices]['Close']
+    df.iloc[rsi_peak_indices, df.columns.get_loc('rsi_peak')] = df.iloc[rsi_peak_indices]['RSI']
+    df.iloc[rsi_trough_indices, df.columns.get_loc('rsi_trough')] = df.iloc[rsi_trough_indices]['RSI']
+    
+    bullish_divergences = []
+    bearish_divergences = []
+    
+    # ========== Bearish RSI-Volume Divergence (Price HH, RSI LH, Volume Decreasing) ==========
+    for i in range(1, len(price_peak_indices)):
+        prev_idx = price_peak_indices[i-1]
+        curr_idx = price_peak_indices[i]
         
-        if curr_peak['Close'] > prev_peak['Close'] and curr_rsi < prev_rsi:
-            divergences.append({
-                'Type': 'Bearish RSI Divergence',
-                'Date': curr_peak.name,
-                'Price': curr_peak['Close'],
-                'Details': f"Price HH, RSI LH"
+        prev_price = df.iloc[prev_idx]['Close']
+        curr_price = df.iloc[curr_idx]['Close']
+        prev_rsi = df.iloc[prev_idx]['RSI']
+        curr_rsi = df.iloc[curr_idx]['RSI']
+        prev_volume = df.iloc[prev_idx]['Volume']
+        curr_volume = df.iloc[curr_idx]['Volume']
+        
+        # Check conditions: Price HH AND RSI LH AND Volume Decreasing
+        if curr_price > prev_price and curr_rsi < prev_rsi and curr_volume < prev_volume:
+            bearish_divergences.append({
+                'Type': 'Bearish RSI-Volume Divergence',
+                'Date': df.index[curr_idx],
+                'Price': curr_price,
+                'RSI': curr_rsi,
+                'Volume': curr_volume,
+                'Details': f"Price HH ({prev_price:.2f} → {curr_price:.2f}), RSI LH ({prev_rsi:.2f} → {curr_rsi:.2f}), Volume↓ ({prev_volume:,.0f} → {curr_volume:,.0f})"
             })
 
-    # Bullish Divergence (Price LL, RSI HL)
-    price_troughs = df[df['price_trough'].notna()]
-    if len(price_troughs) >= 2:
-        curr_trough = price_troughs.iloc[-1]
-        prev_trough = price_troughs.iloc[-2]
-        curr_rsi = df.loc[curr_trough.name]['RSI']
-        prev_rsi = df.loc[prev_trough.name]['RSI']
+    # ========== Bullish RSI-Volume Divergence (Price LL, RSI HL, Volume Decreasing) ==========
+    for i in range(1, len(price_trough_indices)):
+        prev_idx = price_trough_indices[i-1]
+        curr_idx = price_trough_indices[i]
         
-        if curr_trough['Close'] < prev_trough['Close'] and curr_rsi > prev_rsi:
-            divergences.append({
-                'Type': 'Bullish RSI Divergence',
-                'Date': curr_trough.name,
-                'Price': curr_trough['Close'],
-                'Details': f"Price LL, RSI HL"
+        prev_price = df.iloc[prev_idx]['Close']
+        curr_price = df.iloc[curr_idx]['Close']
+        prev_rsi = df.iloc[prev_idx]['RSI']
+        curr_rsi = df.iloc[curr_idx]['RSI']
+        prev_volume = df.iloc[prev_idx]['Volume']
+        curr_volume = df.iloc[curr_idx]['Volume']
+        
+        # Check conditions: Price LL AND RSI HL AND Volume Decreasing
+        if curr_price < prev_price and curr_rsi > prev_rsi and curr_volume < prev_volume:
+            bullish_divergences.append({
+                'Type': 'Bullish RSI-Volume Divergence',
+                'Date': df.index[curr_idx],
+                'Price': curr_price,
+                'RSI': curr_rsi,
+                'Volume': curr_volume,
+                'Details': f"Price LL ({prev_price:.2f} → {curr_price:.2f}), RSI HL ({prev_rsi:.2f} → {curr_rsi:.2f}), Volume↓ ({prev_volume:,.0f} → {curr_volume:,.0f})"
             })
             
-    return divergences
+    return bullish_divergences, bearish_divergences
 
-# --- Volume Logic ---
-def calculate_trends(df, window=14):
-    def get_slope(series):
-        y = series.values
-        x = np.arange(len(y))
-        slope, _, _, _, _ = stats.linregress(x, y)
-        return slope
-
-    df['Price_Slope'] = df['Close'].rolling(window=window).apply(get_slope, raw=False)
-    df['Volume_Slope'] = df['Volume'].rolling(window=window).apply(get_slope, raw=False)
-    return df
-
-def detect_volume_divergence(df):
-    divergences = []
-    subset = df.iloc[-60:].copy() # Scan last 60 days
-    last_signal_type = None
+def identify_early_reversals(df, bullish_divs, bearish_divs, config=None):
+    """
+    Identifies early reversal signals - highest conviction divergences.
     
-    for date, row in subset.iterrows():
-        price_slope = row['Price_Slope']
-        vol_slope = row['Volume_Slope']
-        price = row['Close']
+    Criteria for early reversal:
+    - Bullish: RSI < 30 (oversold) + volume significantly below MA-50
+    - Bearish: RSI > 70 (overbought) + volume significantly below MA-20
+    """
+    cfg = config if config else RSI_VOLUME_CONFIG
+    rsi_overbought = cfg.get('RSI_OVERBOUGHT', RSI_VOLUME_CONFIG['RSI_OVERBOUGHT'])
+    rsi_oversold = cfg.get('RSI_OVERSOLD', RSI_VOLUME_CONFIG['RSI_OVERSOLD'])
+    
+    early_reversals = []
+    
+    # Check bullish divergences for early reversal signals
+    for div in bullish_divs:
+        div_date = div['Date']
+        div_rsi = div['RSI']
+        div_volume = div['Volume']
         
-        if pd.isna(price_slope) or pd.isna(vol_slope):
-            continue
-            
-        current_signal = None
-        details = ""
+        # Get volume MA at that date
+        volume_ma_50 = df.loc[div_date, 'Volume_MA_50']
         
-        if price_slope < 0 and vol_slope < 0:
-            current_signal = 'Bullish Volume Divergence'
-            details = "Price Falling, Volume Dropping (Weak Selling)"
-        elif price_slope > 0 and vol_slope < 0:
-            current_signal = 'Bearish Volume Divergence'
-            details = "Price Rising, Volume Dropping (Weak Buying)"
-            
-        if current_signal and current_signal != last_signal_type:
-            divergences.append({
-                'Type': current_signal,
-                'Date': date,
-                'Price': price,
-                'Details': details
+        # Early bullish reversal: RSI oversold + volume well below MA-50
+        if div_rsi < rsi_oversold and div_volume < (volume_ma_50 * 0.7):
+            early_reversals.append({
+                'Type': 'Early Bullish Reversal',
+                'Date': div_date,
+                'Price': div['Price'],
+                'RSI': div_rsi,
+                'Volume': div_volume,
+                'Details': f"Strong bullish signal: RSI={div_rsi:.1f} (oversold), Volume={div_volume:,.0f} (<<MA50={volume_ma_50:,.0f})"
             })
-            last_signal_type = current_signal
-            
-    return divergences
+    
+    # Check bearish divergences for early reversal signals
+    for div in bearish_divs:
+        div_date = div['Date']
+        div_rsi = div['RSI']
+        div_volume = div['Volume']
+        
+        # Get volume MA at that date
+        volume_ma_20 = df.loc[div_date, 'Volume_MA_20']
+        
+        # Early bearish reversal: RSI overbought + volume below MA-20
+        if div_rsi > rsi_overbought and div_volume < volume_ma_20:
+            early_reversals.append({
+                'Type': 'Early Bearish Reversal',
+                'Date': div_date,
+                'Price': div['Price'],
+                'RSI': div_rsi,
+                'Volume': div_volume,
+                'Details': f"Strong bearish signal: RSI={div_rsi:.1f} (overbought), Volume={div_volume:,.0f} (<MA20={volume_ma_20:,.0f})"
+            })
+    
+    return early_reversals
 
-# --- Combined Analysis ---
-def analyze_combined(ticker, plot=False):
-    print(f"\nAnalyzing {ticker} for Combined Signals...")
-    try:
-        df = fetch_data(ticker)
-        
-        # Calculate Indicators
-        df = calculate_rsi(df)
-        df = calculate_trends(df)
-        
-        # Detect Signals
-        rsi_divs = detect_rsi_divergence(df)
-        vol_divs = detect_volume_divergence(df)
-        
-        # Combine and Check for Confluence
-        # We look for signals that happened recently (e.g., within the last 10 days)
-        # and if both indicators agree, we issue a strong signal.
-        
-        recent_rsi = [d for d in rsi_divs if (datetime.now() - d['Date']).days <= 30]
-        recent_vol = [d for d in vol_divs if (datetime.now() - d['Date']).days <= 30]
-        
-        print(f"  Recent RSI Signals: {len(recent_rsi)}")
-        print(f"  Recent Volume Signals: {len(recent_vol)}")
-        
-        # Check for Strong Buy
-        bullish_rsi = any('Bullish' in d['Type'] for d in recent_rsi)
-        bullish_vol = any('Bullish' in d['Type'] for d in recent_vol)
-        
-        if bullish_rsi and bullish_vol:
-            print(f"  [STRONG BUY SIGNAL] Confluence of Bullish RSI and Volume Divergence detected!")
-            print(f"  - RSI: {[d['Date'].date() for d in recent_rsi if 'Bullish' in d['Type']]}")
-            print(f"  - Vol: {[d['Date'].date() for d in recent_vol if 'Bullish' in d['Type']]}")
-            
-        # Check for Strong Sell
-        bearish_rsi = any('Bearish' in d['Type'] for d in recent_rsi)
-        bearish_vol = any('Bearish' in d['Type'] for d in recent_vol)
-        
-        if bearish_rsi and bearish_vol:
-            print(f"  [STRONG SELL SIGNAL] Confluence of Bearish RSI and Volume Divergence detected!")
-            print(f"  - RSI: {[d['Date'].date() for d in recent_rsi if 'Bearish' in d['Type']]}")
-            print(f"  - Vol: {[d['Date'].date() for d in recent_vol if 'Bearish' in d['Type']]}")
-            
-        if not (bullish_rsi and bullish_vol) and not (bearish_rsi and bearish_vol):
-             print("  No strong combined signals detected.")
-             
-        if plot:
-            plot_combined_divergence(df, ticker, rsi_divs, vol_divs)
-
-    except Exception as e:
-        print(f"Error analyzing {ticker}: {e}")
-
-def plot_combined_divergence(df, ticker, rsi_divs, vol_divs):
+def plot_rsi_volume_divergence(df, ticker, show_plot=True, config=None, bullish_divs=None, bearish_divs=None, early_reversals=None):
     """
     Plots Price, RSI, and Volume with divergence markers.
+    
+    Three-panel chart:
+    1. Price with divergence markers
+    2. RSI with overbought/oversold zones
+    3. Volume with moving averages
     """
-    plt.figure(figsize=(14, 12))
+    cfg = config if config else RSI_VOLUME_CONFIG
+    overbought = cfg.get('RSI_OVERBOUGHT', RSI_VOLUME_CONFIG['RSI_OVERBOUGHT'])
+    oversold = cfg.get('RSI_OVERSOLD', RSI_VOLUME_CONFIG['RSI_OVERSOLD'])
+    period = cfg.get('RSI_PERIOD', RSI_VOLUME_CONFIG['RSI_PERIOD'])
     
-    # --- Subplot 1: Price ---
+    fig = plt.figure(figsize=(14, 12))
+    
+    # ========== Price Plot ==========
     ax1 = plt.subplot(3, 1, 1)
-    ax1.plot(df.index, df['Close'], label='Close Price', color='blue', linewidth=1)
-    plt.title(f'{ticker} Combined Divergence Analysis')
-    plt.ylabel('Price')
-    plt.grid(True)
+    plt.plot(df.index, df['Close'], label='Close Price', color='blue', linewidth=1.5)
     
-    # Plot RSI Divergences on Price
-    for div in rsi_divs:
-        color = 'red' if 'Bearish' in div['Type'] else 'green'
-        marker = 'v' if 'Bearish' in div['Type'] else '^'
-        # Plot slightly offset
-        y_pos = div['Price'] * (1.02 if 'Bearish' in div['Type'] else 0.98)
-        ax1.scatter(div['Date'], y_pos, color=color, marker=marker, s=100, label=f"RSI {div['Type'].split()[0]}", zorder=5)
-
-    # Plot Volume Divergences on Price
-    for div in vol_divs:
-        color = 'orange' if 'Bearish' in div['Type'] else 'cyan' # Different colors for Volume Divs
-        marker = 'D' # Diamond marker for Volume Divs
-        # Plot slightly offset (further than RSI)
-        y_pos = div['Price'] * (1.04 if 'Bearish' in div['Type'] else 0.96)
-        ax1.scatter(div['Date'], y_pos, color=color, marker=marker, s=80, label=f"Vol {div['Type'].split()[0]}", zorder=5)
-
-    # Unique Legend
-    handles, labels = ax1.get_legend_handles_labels()
-    by_label = dict(zip(labels, handles))
-    ax1.legend(by_label.values(), by_label.keys(), loc='best')
-
-    # --- Subplot 2: RSI ---
+    # Plot price peaks and troughs
+    price_peaks = df[df['price_peak'].notna()]
+    price_troughs = df[df['price_trough'].notna()]
+    
+    if not price_peaks.empty:
+        plt.scatter(price_peaks.index, price_peaks['Close'], color='orange', marker='v', 
+                   s=60, alpha=0.6, zorder=3)
+    if not price_troughs.empty:
+        plt.scatter(price_troughs.index, price_troughs['Close'], color='cyan', marker='^', 
+                   s=60, alpha=0.6, zorder=3)
+    
+    # Plot Divergence Markers
+    if bullish_divs:
+        for div in bullish_divs:
+            plt.scatter(div['Date'], div['Price'], color='green', marker='^', s=200, 
+                       zorder=5, edgecolors='black', linewidths=2)
+    
+    if bearish_divs:
+        for div in bearish_divs:
+            plt.scatter(div['Date'], div['Price'], color='red', marker='v', s=200, 
+                       zorder=5, edgecolors='black', linewidths=2)
+    
+    # Plot Early Reversal markers (with star)
+    if early_reversals:
+        for rev in early_reversals:
+            color = 'darkgreen' if 'Bullish' in rev['Type'] else 'darkred'
+            plt.scatter(rev['Date'], rev['Price'], color=color, marker='*', s=300, 
+                       zorder=6, edgecolors='gold', linewidths=2)
+    
+    plt.title(f'{ticker} RSI-Volume Divergence Analysis', fontsize=14, fontweight='bold')
+    plt.ylabel('Price', fontsize=11)
+    plt.grid(True, alpha=0.3)
+    
+    # ========== RSI Plot ==========
     ax2 = plt.subplot(3, 1, 2, sharex=ax1)
-    ax2.plot(df.index, df['RSI'], label='RSI (14)', color='purple')
-    ax2.axhline(70, linestyle='--', alpha=0.5, color='red')
-    ax2.axhline(30, linestyle='--', alpha=0.5, color='green')
-    plt.ylabel('RSI')
-    plt.legend(loc='upper right')
-    plt.grid(True)
-
-    # --- Subplot 3: Volume ---
+    plt.plot(df.index, df['RSI'], label=f'RSI ({period})', color='purple', linewidth=1.5)
+    plt.axhline(overbought, linestyle='--', alpha=0.5, color='red', label=f'Overbought ({overbought})')
+    plt.axhline(oversold, linestyle='--', alpha=0.5, color='green', label=f'Oversold ({oversold})')
+    plt.fill_between(df.index, 0, df['RSI'], where=(df['RSI'] >= overbought), 
+                     color='red', alpha=0.1, interpolate=True)
+    plt.fill_between(df.index, 0, df['RSI'], where=(df['RSI'] <= oversold), 
+                     color='green', alpha=0.1, interpolate=True)
+    
+    # Plot RSI peaks and troughs
+    rsi_peaks = df[df['rsi_peak'].notna()]
+    rsi_troughs = df[df['rsi_trough'].notna()]
+    
+    if not rsi_peaks.empty:
+        plt.scatter(rsi_peaks.index, rsi_peaks['RSI'], color='orange', marker='v', 
+                   s=60, alpha=0.6, zorder=3)
+    if not rsi_troughs.empty:
+        plt.scatter(rsi_troughs.index, rsi_troughs['RSI'], color='cyan', marker='^', 
+                   s=60, alpha=0.6, zorder=3)
+    
+    # Plot divergence markers on RSI
+    if bullish_divs:
+        for div in bullish_divs:
+            plt.scatter(div['Date'], div['RSI'], color='green', marker='^', s=200, 
+                       zorder=5, edgecolors='black', linewidths=2)
+    
+    if bearish_divs:
+        for div in bearish_divs:
+            plt.scatter(div['Date'], div['RSI'], color='red', marker='v', s=200, 
+                       zorder=5, edgecolors='black', linewidths=2)
+    
+    plt.title('Relative Strength Index (RSI)', fontsize=12)
+    plt.ylabel('RSI', fontsize=11)
+    plt.ylim(0, 100)
+    plt.legend(loc='best')
+    plt.grid(True, alpha=0.3)
+    
+    # ========== Volume Plot ==========
     ax3 = plt.subplot(3, 1, 3, sharex=ax1)
-    colors = np.where(df['Close'].diff() >= 0, 'green', 'red')
-    ax3.bar(df.index, df['Volume'], color=colors, alpha=0.5, label='Volume')
-    plt.ylabel('Volume')
-    plt.xlabel('Date')
-    plt.legend(loc='upper right')
-    plt.grid(True)
+    
+    # Color volume bars based on price direction
+    colors = ['green' if df['Close'].iloc[i] >= df['Close'].iloc[i-1] else 'red' 
+              for i in range(1, len(df))]
+    colors = ['gray'] + colors  # First bar is gray
+    
+    plt.bar(df.index, df['Volume'], color=colors, alpha=0.5, width=0.8)
+    
+    # Plot Volume MAs
+    plt.plot(df.index, df['Volume_MA_20'], label='Volume MA-20', color='blue', linewidth=1.5, alpha=0.7)
+    plt.plot(df.index, df['Volume_MA_50'], label='Volume MA-50', color='orange', linewidth=1.5, alpha=0.7)
+    
+    plt.title('Volume with Moving Averages', fontsize=12)
+    plt.ylabel('Volume', fontsize=11)
+    plt.xlabel('Date', fontsize=11)
+    plt.legend(loc='best')
+    plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.show()
-
-def analyze_batch(tickers_file='tickers.txt'):
-    import os
-    if not os.path.exists(tickers_file):
-        if os.path.exists(os.path.join('..', '..', tickers_file)): tickers_file = os.path.join('..', '..', tickers_file)
-        elif os.path.exists(os.path.join('..', tickers_file)): tickers_file = os.path.join('..', tickers_file)
-        else:
-            print(f"Error: {tickers_file} not found.")
-            return
-
-    with open(tickers_file, 'r') as f:
-        tickers = [line.strip() for line in f if line.strip()]
+    
+    if show_plot:
+        plt.show()
         
-    print(f"Found {len(tickers)} tickers. Starting combined analysis...")
+    return fig
+
+def run_analysis(ticker, show_plot=True, config=None):
+    """
+    Main analysis function that can be called from a GUI or other scripts.
+    
+    Args:
+        ticker: Stock ticker symbol
+        show_plot: If True, displays the plot. If False, just returns the figure.
+        config: Optional dictionary to override default configuration
+    
+    Returns:
+        dict: Analysis results including divergences, early reversals, and figure
+    """
+    # Set non-interactive backend when not showing plot (e.g., for Flask/web)
+    if not show_plot:
+        matplotlib.use('Agg', force=True)
+    
+    try:
+        # Merge provided config with defaults
+        current_config = RSI_VOLUME_CONFIG.copy()
+        if config:
+            current_config.update(config)
+
+        # Fetch and calculate
+        df = fetch_data(ticker, config=current_config)
+        df = calculate_rsi(df, config=current_config)
+        df = calculate_volume_ma(df, config=current_config)
+        
+        bullish_divs, bearish_divs = detect_rsi_volume_divergence(df, config=current_config)
+        early_reversals = identify_early_reversals(df, bullish_divs, bearish_divs, config=current_config)
+        
+        current_rsi = df['RSI'].iloc[-1]
+        current_volume = df['Volume'].iloc[-1]
+        volume_ma_20 = df['Volume_MA_20'].iloc[-1]
+        volume_ma_50 = df['Volume_MA_50'].iloc[-1]
+        
+        # Generate plot
+        fig = plot_rsi_volume_divergence(df, ticker, show_plot=show_plot, config=current_config,
+                                         bullish_divs=bullish_divs, bearish_divs=bearish_divs,
+                                         early_reversals=early_reversals)
+        
+        return {
+            'success': True,
+            'ticker': ticker,
+            'current_rsi': current_rsi,
+            'current_volume': current_volume,
+            'volume_ma_20': volume_ma_20,
+            'volume_ma_50': volume_ma_50,
+            'bullish_divergences': bullish_divs,
+            'bearish_divergences': bearish_divs,
+            'early_reversals': early_reversals,
+            'figure': fig,
+            'dataframe': df
+        }
+        
+    except Exception as e:
+        return {
+            'success': False,
+            'ticker': ticker,
+            'error': str(e)
+        }
+
+def analyze_batch(json_file):
+    """
+    Reads tickers from a JSON file and performs RSI-Volume Divergence analysis for each.
+    """
+    import os
+    import json
+    
+    if not os.path.exists(json_file):
+        print(f"Error: {json_file} not found.")
+        return
+        
+    with open(json_file, 'r') as f:
+        data = json.load(f)
+        
+    # tickers_list.json is a simple dictionary of "Name": "Ticker"
+    tickers = list(data.values())
+            
+    # Remove duplicates
+    tickers = list(set(tickers))
+        
+    print(f"Found {len(tickers)} unique tickers in {json_file}. Starting RSI-Volume Divergence analysis...")
+    
     for ticker in tickers:
-        analyze_combined(ticker)
+        print(f"\nAnalyzing {ticker}...")
+        try:
+            result = run_analysis(ticker, show_plot=False)
+            
+            if result['success']:
+                print(f"  Current RSI: {result['current_rsi']:.2f}")
+                print(f"  Current Volume: {result['current_volume']:,.0f}")
+                print(f"  Volume MA-20: {result['volume_ma_20']:,.0f}")
+                print(f"  Volume MA-50: {result['volume_ma_50']:,.0f}")
+                
+                if result['bullish_divergences']:
+                    print(f"  --- Bullish RSI-Volume Divergences ---")
+                    for div in result['bullish_divergences']:
+                        print(f"  {div['Date'].date()}: {div['Details']}")
+                
+                if result['bearish_divergences']:
+                    print(f"  --- Bearish RSI-Volume Divergences ---")
+                    for div in result['bearish_divergences']:
+                        print(f"  {div['Date'].date()}: {div['Details']}")
+                
+                if result['early_reversals']:
+                    print(f"  ⭐ --- EARLY REVERSAL SIGNALS ---")
+                    for rev in result['early_reversals']:
+                        print(f"  {rev['Date'].date()}: {rev['Details']}")
+                
+                if not result['bullish_divergences'] and not result['bearish_divergences']:
+                    print("  No RSI-Volume divergences detected.")
+            else:
+                print(f"  Error: {result.get('error')}")
+                
+        except Exception as e:
+            print(f"  Error analyzing {ticker}: {e}")
 
 if __name__ == "__main__":
     import os
-    run_batch = False # Default to batch for this powerful script
     
-    if os.path.exists('tickers.txt') and run_batch:
-        analyze_batch('tickers.txt')
-    elif os.path.exists('../tickers.txt') and run_batch:
-        analyze_batch('../tickers.txt')
+    # Load execution parameters from config
+    run_batch = RSI_VOLUME_CONFIG['RUN_BATCH']
+    default_ticker = RSI_VOLUME_CONFIG['DEFAULT_TICKER']
+    batch_relative_path = RSI_VOLUME_CONFIG['BATCH_RELATIVE_PATH']
+    
+    # Resolve batch file path
+    batch_file = os.path.join(os.path.dirname(__file__), batch_relative_path)
+
+    if run_batch and os.path.exists(batch_file):
+        analyze_batch(batch_file)
     else:
-        analyze_combined("reliance.NS", plot=True)
+        print(f"Running RSI-Volume Divergence Analysis for {default_ticker}...")
+        
+        result = run_analysis(default_ticker, show_plot=True)
+        
+        if result['success']:
+            print(f"\nCurrent RSI: {result['current_rsi']:.2f}")
+            print(f"Current Volume: {result['current_volume']:,.0f}")
+            print(f"Volume MA-20: {result['volume_ma_20']:,.0f}")
+            print(f"Volume MA-50: {result['volume_ma_50']:,.0f}")
+            
+            if result['bullish_divergences']:
+                print("\n--- Bullish RSI-Volume Divergences Detected ---")
+                for div in result['bullish_divergences']:
+                    print(f"{div['Date'].date()}: {div['Details']}")
+            
+            if result['bearish_divergences']:
+                print("\n--- Bearish RSI-Volume Divergences Detected ---")
+                for div in result['bearish_divergences']:
+                    print(f"{div['Date'].date()}: {div['Details']}")
+            
+            if result['early_reversals']:
+                print("\n⭐ --- EARLY REVERSAL SIGNALS ---")
+                for rev in result['early_reversals']:
+                    print(f"{rev['Date'].date()}: {rev['Details']}")
+            
+            if not result['bullish_divergences'] and not result['bearish_divergences']:
+                print("\nNo RSI-Volume divergences detected.")
+        else:
+            print(f"Error: {result.get('error')}")
