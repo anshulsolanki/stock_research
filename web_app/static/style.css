@@ -253,6 +253,9 @@ header h1 {
 .main-tab-content {
     display: none;
     animation: fadeIn 0.4s ease;
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
 }
 
 .main-tab-content.active {
@@ -266,6 +269,7 @@ header h1 {
     margin-bottom: 20px;
     border-bottom: 2px solid #f0f0f0;
     padding-left: 10px;
+    background-color: #ffffff;
 }
 
 .tab-button {
@@ -382,7 +386,8 @@ header h1 {
 #bollingerChartImage,
 #crossoverChartImage,
 #donchianChartImage,
-#rsiChartImage {
+#rsiChartImage,
+#rsiVolumeChartImage {
     width: 100%;
     max-height: 70vh;
     /* Limit height to 70% of viewport height */

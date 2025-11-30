@@ -17,6 +17,7 @@ from bollinger_band_analysis import run_analysis as run_bollinger_analysis
 from crossover_analysis import run_analysis as run_crossover_analysis
 from donchian_channel_analysis import run_analysis as run_donchian_analysis
 from rsi_divergence_analysis import run_analysis as run_rsi_analysis
+from rsi_volume_divergence import run_analysis as run_rsi_volume_analysis
 
 app = Flask(__name__)
 
@@ -38,6 +39,7 @@ def analyze():
         crossover_config = data.get('crossover_config', {})
         donchian_config = data.get('donchian_config', {})
         rsi_config = data.get('rsi_config', {})
+        rsi_volume_config = data.get('rsi_volume_config', {})
         
         if not ticker:
             return jsonify({'success': False, 'error': 'Please enter a valid ticker symbol'})
@@ -273,6 +275,76 @@ def analyze():
                 'current_rsi': round(rsi_results['current_rsi'], 2),
                 'divergences': divergences_formatted,
                 'chart_image': rsi_image_base64
+            }
+        
+        # Run RSI-Volume Divergence Analysis
+        if analysis_type in ['all', 'rsi_volume']:
+            print(f"Starting RSI-Volume analysis for {ticker}...")
+            rsi_volume_results = run_rsi_volume_analysis(ticker=ticker, show_plot=False, config=rsi_volume_config)
+            print(f"RSI-Volume analysis result: {rsi_volume_results['success']}")
+            
+            if not rsi_volume_results['success']:
+                return jsonify(rsi_volume_results)
+            
+            # Convert RSI-Volume figure to base64 image
+            rsi_volume_fig = rsi_volume_results['figure']
+            rsi_volume_buf = BytesIO()
+            rsi_volume_fig.savefig(rsi_volume_buf, format='png', dpi=100, bbox_inches='tight')
+            rsi_volume_buf.seek(0)
+            rsi_volume_image_base64 = base64.b64encode(rsi_volume_buf.getvalue()).decode('utf-8')
+            rsi_volume_buf.close()
+            print("RSI-Volume chart generated successfully")
+            
+            # Close the figure
+            plt.close(rsi_volume_fig)
+            
+            # Format divergences for JSON
+            bullish_divs_formatted = []
+            bearish_divs_formatted = []
+            early_reversals_formatted = []
+            
+            if rsi_volume_results['bullish_divergences']:
+                for div in rsi_volume_results['bullish_divergences']:
+                    bullish_divs_formatted.append({
+                        'type': div['Type'],
+                        'date': div['Date'].strftime('%Y-%m-%d'),
+                        'price': float(div['Price']),
+                        'rsi': float(div['RSI']),
+                        'volume': int(div['Volume']),
+                        'details': div['Details']
+                    })
+            
+            if rsi_volume_results['bearish_divergences']:
+                for div in rsi_volume_results['bearish_divergences']:
+                    bearish_divs_formatted.append({
+                        'type': div['Type'],
+                        'date': div['Date'].strftime('%Y-%m-%d'),
+                        'price': float(div['Price']),
+                        'rsi': float(div['RSI']),
+                        'volume': int(div['Volume']),
+                        'details': div['Details']
+                    })
+            
+            if rsi_volume_results['early_reversals']:
+                for rev in rsi_volume_results['early_reversals']:
+                    early_reversals_formatted.append({
+                        'type': rev['Type'],
+                        'date': rev['Date'].strftime('%Y-%m-%d'),
+                        'price': float(rev['Price']),
+                        'rsi': float(rev['RSI']),
+                        'volume': int(rev['Volume']),
+                        'details': rev['Details']
+                    })
+            
+            response_data['rsi_volume'] = {
+                'current_rsi': round(rsi_volume_results['current_rsi'], 2),
+                'current_volume': int(rsi_volume_results['current_volume']),
+                'volume_ma_20': int(rsi_volume_results['volume_ma_20']),
+                'volume_ma_50': int(rsi_volume_results['volume_ma_50']),
+                'bullish_divergences': bullish_divs_formatted,
+                'bearish_divergences': bearish_divs_formatted,
+                'early_reversals': early_reversals_formatted,
+                'chart_image': rsi_volume_image_base64
             }
         
         return jsonify(response_data)

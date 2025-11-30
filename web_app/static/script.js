@@ -89,6 +89,9 @@ async function analyzeStock(analysisType = 'all') {
     } else if (analysisType === 'rsi') {
         activeBtn = document.querySelector('#rsi-tab .run-analysis-btn');
         originalBtnText = activeBtn.textContent;
+    } else if (analysisType === 'rsi_volume') {
+        activeBtn = document.querySelector('#rsi_volume-tab .run-analysis-btn');
+        originalBtnText = activeBtn.textContent;
     }
 
     // Validation
@@ -174,6 +177,19 @@ async function analyzeStock(analysisType = 'all') {
             LOOKBACK_PERIODS: parseInt(document.getElementById('rsiLookback').value) || 730,
             RSI_OVERBOUGHT: parseInt(document.getElementById('rsiOverbought').value) || 70,
             RSI_OVERSOLD: parseInt(document.getElementById('rsiOversold').value) || 30
+        };
+    }
+
+    if (analysisType === 'all' || analysisType === 'rsi_volume') {
+        requestBody.rsi_volume_config = {
+            RSI_PERIOD: parseInt(document.getElementById('rsiVolumePeriod').value) || 14,
+            ORDER: parseInt(document.getElementById('rsiVolumeOrder').value) || 5,
+            VOLUME_MA_SHORT: parseInt(document.getElementById('rsiVolumeMAShort').value) || 20,
+            VOLUME_MA_LONG: parseInt(document.getElementById('rsiVolumeMALong').value) || 50,
+            INTERVAL: document.getElementById('rsiVolumeInterval').value || '1d',
+            LOOKBACK_PERIODS: parseInt(document.getElementById('rsiVolumeLookback').value) || 730,
+            RSI_OVERBOUGHT: parseInt(document.getElementById('rsiVolumeOverbought').value) || 70,
+            RSI_OVERSOLD: parseInt(document.getElementById('rsiVolumeOversold').value) || 30
         };
     }
 
@@ -482,6 +498,96 @@ function displayResults(data, analysisType) {
             });
         } else {
             rsiDivergenceSection.style.display = 'none';
+        }
+    }
+
+    // ========== RSI-Volume Divergence Data ==========
+    if (data.rsi_volume && (analysisType === 'all' || analysisType === 'rsi_volume')) {
+        const rsiVol = data.rsi_volume;
+
+        // Update metrics
+        document.getElementById('rsiVolumeCurrent').textContent = rsiVol.current_rsi ? rsiVol.current_rsi.toFixed(2) : '--';
+        document.getElementById('rsiVolumeCurrentVol').textContent = rsiVol.current_volume ? rsiVol.current_volume.toLocaleString() : '--';
+        document.getElementById('rsiVolumeMA20').textContent = rsiVol.volume_ma_20 ? rsiVol.volume_ma_20.toLocaleString() : '--';
+        document.getElementById('rsiVolumeMA50').textContent = rsiVol.volume_ma_50 ? rsiVol.volume_ma_50.toLocaleString() : '--';
+
+        // Update chart
+        if (rsiVol.chart_image) {
+            document.getElementById('rsiVolumeChartImage').src = 'data:image/png;base64,' + rsiVol.chart_image;
+        }
+
+        // Update Bullish divergences
+        const bullishSection = document.getElementById('rsiVolumeBullishSection');
+        const bullishList = document.getElementById('rsiVolumeBullishList');
+        bullishList.innerHTML = '';
+
+        if (rsiVol.bullish_divergences && rsiVol.bullish_divergences.length > 0) {
+            bullishSection.style.display = 'block';
+            rsiVol.bullish_divergences.slice().reverse().forEach(divData => {
+                const div = document.createElement('div');
+                div.className = 'divergence-item bullish';
+                div.innerHTML = `
+                    <div class="divergence-type bullish"><strong>${divData.type}</strong></div>
+                    <div class="divergence-details">
+                        Date: ${divData.date} | Price: ${divData.price.toFixed(2)}<br>
+                        RSI: ${divData.rsi.toFixed(2)} | Volume: ${divData.volume.toLocaleString()}<br>
+                        ${divData.details}
+                    </div>
+                `;
+                bullishList.appendChild(div);
+            });
+        } else {
+            bullishSection.style.display = 'none';
+        }
+
+        // Update Bearish divergences
+        const bearishSection = document.getElementById('rsiVolumeBearishSection');
+        const bearishList = document.getElementById('rsiVolumeBearishList');
+        bearishList.innerHTML = '';
+
+        if (rsiVol.bearish_divergences && rsiVol.bearish_divergences.length > 0) {
+            bearishSection.style.display = 'block';
+            rsiVol.bearish_divergences.slice().reverse().forEach(divData => {
+                const div = document.createElement('div');
+                div.className = 'divergence-item bearish';
+                div.innerHTML = `
+                    <div class="divergence-type bearish"><strong>${divData.type}</strong></div>
+                    <div class="divergence-details">
+                        Date: ${divData.date} | Price: ${divData.price.toFixed(2)}<br>
+                        RSI: ${divData.rsi.toFixed(2)} | Volume: ${divData.volume.toLocaleString()}<br>
+                        ${divData.details}
+                    </div>
+                `;
+                bearishList.appendChild(div);
+            });
+        } else {
+            bearishSection.style.display = 'none';
+        }
+
+        // Update Early Reversals
+        const reversalSection = document.getElementById('rsiVolumeReversalSection');
+        const reversalList = document.getElementById('rsiVolumeReversalList');
+        reversalList.innerHTML = '';
+
+        if (rsiVol.early_reversals && rsiVol.early_reversals.length > 0) {
+            reversalSection.style.display = 'block';
+            rsiVol.early_reversals.slice().reverse().forEach(revData => {
+                const div = document.createElement('div');
+                div.className = `divergence-item ${revData.type.includes('Bullish') ? 'bullish' : 'bearish'}`;
+                div.innerHTML = `
+                    <div class="divergence-type ${revData.type.includes('Bullish') ? 'bullish' : 'bearish'}">
+                        <strong>⭐ ${revData.type}</strong>
+                    </div>
+                    <div class="divergence-details">
+                        Date: ${revData.date} | Price: ${revData.price.toFixed(2)}<br>
+                        RSI: ${revData.rsi.toFixed(2)} | Volume: ${revData.volume.toLocaleString()}<br>
+                        ${revData.details}
+                    </div>
+                `;
+                reversalList.appendChild(div);
+            });
+        } else {
+            reversalSection.style.display = 'none';
         }
     }
 

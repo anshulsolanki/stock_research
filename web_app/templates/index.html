@@ -406,10 +406,12 @@
                 </div>
             </div>
 
+
             <!-- Leading Indicator Analysis Tab -->
             <div id="leading-section" class="main-tab-content">
                 <div class="tabs">
                     <button class="tab-button active" onclick="showTab('rsi')">RSI Divergence</button>
+                    <button class="tab-button" onclick="showTab('rsi_volume')">RSI-Volume Divergence</button>
                 </div>
 
                 <!-- RSI Divergence Tab Content -->
@@ -469,6 +471,97 @@
                     <div class="chart-section">
                         <h3>RSI Divergence Chart</h3>
                         <img id="rsiChartImage" src="" alt="RSI Divergence Chart" />
+                    </div>
+                </div>
+
+                <!-- RSI-Volume Divergence Tab Content -->
+                <div id="rsi_volume-tab" class="tab-content">
+                    <!-- RSI-Volume Configuration -->
+                    <div class="tab-config-section">
+                        <button class="config-toggle" onclick="toggleConfig('rsiVolumeConfigPanel')">⚙️ RSI-Volume
+                            Configuration</button>
+                        <div id="rsiVolumeConfigPanel" class="config-panel" style="display: none;">
+                            <div class="config-group">
+                                <div class="input-group">
+                                    <label for="rsiVolumePeriod">RSI Period:</label>
+                                    <input type="number" id="rsiVolumePeriod" value="14" min="1">
+                                </div>
+                                <div class="input-group">
+                                    <label for="rsiVolumeOrder">Peak/Trough Order:</label>
+                                    <input type="number" id="rsiVolumeOrder" value="5" min="1">
+                                </div>
+                                <div class="input-group">
+                                    <label for="rsiVolumeMAShort">Volume MA Short:</label>
+                                    <input type="number" id="rsiVolumeMAShort" value="20" min="1">
+                                </div>
+                                <div class="input-group">
+                                    <label for="rsiVolumeMALong">Volume MA Long:</label>
+                                    <input type="number" id="rsiVolumeMALong" value="50" min="1">
+                                </div>
+                                <div class="input-group">
+                                    <label for="rsiVolumeInterval">Interval:</label>
+                                    <select id="rsiVolumeInterval">
+                                        <option value="1d" selected>1 Day</option>
+                                        <option value="1wk">1 Week</option>
+                                        <option value="1mo">1 Month</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="rsiVolumeLookback">Lookback (Days):</label>
+                                    <input type="number" id="rsiVolumeLookback" value="730" min="1">
+                                </div>
+                                <div class="input-group">
+                                    <label for="rsiVolumeOverbought">Overbought:</label>
+                                    <input type="number" id="rsiVolumeOverbought" value="70" min="1" max="100">
+                                </div>
+                                <div class="input-group">
+                                    <label for="rsiVolumeOversold">Oversold:</label>
+                                    <input type="number" id="rsiVolumeOversold" value="30" min="1" max="100">
+                                </div>
+                                <button class="run-analysis-btn" onclick="analyzeStock('rsi_volume')">Run RSI-Volume
+                                    Analysis</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">Current RSI</div>
+                            <div class="metric-value" id="rsiVolumeCurrent">--</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Current Volume</div>
+                            <div class="metric-value" id="rsiVolumeCurrentVol">--</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Volume MA-20</div>
+                            <div class="metric-value" id="rsiVolumeMA20">--</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Volume MA-50</div>
+                            <div class="metric-value" id="rsiVolumeMA50">--</div>
+                        </div>
+                    </div>
+
+                    <div id="rsiVolumeBullishSection" class="divergence-section" style="display: none;">
+                        <h3>📈 Bullish RSI-Volume Divergences</h3>
+                        <div id="rsiVolumeBullishList" class="divergence-list"></div>
+                    </div>
+
+                    <div id="rsiVolumeBearishSection" class="divergence-section" style="display: none;">
+                        <h3>📉 Bearish RSI-Volume Divergences</h3>
+                        <div id="rsiVolumeBearishList" class="divergence-list"></div>
+                    </div>
+
+                    <div id="rsiVolumeReversalSection" class="divergence-section"
+                        style="display: none; background: #fff3cd; border-left: 4px solid #ffc107;">
+                        <h3>⭐ Early Reversal Signals</h3>
+                        <div id="rsiVolumeReversalList" class="divergence-list"></div>
+                    </div>
+
+                    <div class="chart-section">
+                        <h3>RSI-Volume Divergence Chart</h3>
+                        <img id="rsiVolumeChartImage" src="" alt="RSI-Volume Divergence Chart" />
                     </div>
                 </div>
             </div>
