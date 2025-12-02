@@ -95,6 +95,9 @@ async function analyzeStock(analysisType = 'all') {
     } else if (analysisType === 'volatility_squeeze') {
         activeBtn = document.querySelector('#volatility_squeeze-tab .run-analysis-btn');
         originalBtnText = activeBtn.textContent;
+    } else if (analysisType === 'rs') {
+        activeBtn = document.querySelector('#rs-tab .run-analysis-btn');
+        originalBtnText = activeBtn.textContent;
     }
 
     // Validation
@@ -209,6 +212,14 @@ async function analyzeStock(analysisType = 'all') {
             INTERVAL: document.getElementById('vsInterval').value || '1d',
             LOOKBACK_PERIODS: parseInt(document.getElementById('vsLookbackPeriods').value) || 365
         };
+    }
+
+    if (analysisType === 'all' || analysisType === 'rs') {
+        requestBody.rs_config = {
+            INTERVAL: document.getElementById('rsInterval').value || '1d',
+            LOOKBACK_PERIODS: parseInt(document.getElementById('rsLookbackPeriods').value) || 504
+        };
+        requestBody.use_sector_index = document.getElementById('rsUseSectorIndex').checked;
     }
 
     try {
@@ -656,6 +667,86 @@ function displayResults(data, analysisType) {
             });
         } else {
             signalsSection.style.display = 'none';
+        }
+    }
+
+    // ========== RS Analysis Data ==========
+    if (data.rs && (analysisType === 'all' || analysisType === 'rs')) {
+        const rs = data.rs;
+
+        // Update metrics
+        document.getElementById('rsBenchmark').textContent = rs.benchmark || '--';
+        document.getElementById('rsSector').textContent = rs.sector || 'N/A';
+        document.getElementById('rsClassification').textContent = rs.classification || '--';
+        document.getElementById('rsScore').textContent = rs.rs_score ? rs.rs_score.toFixed(1) : '--';
+
+        // Update RS Ratios
+        document.getElementById('rs1M').textContent = rs.rs_ratios['1M'] ? rs.rs_ratios['1M'].toFixed(3) : '--';
+        document.getElementById('rs3M').textContent = rs.rs_ratios['3M'] ? rs.rs_ratios['3M'].toFixed(3) : '--';
+        document.getElementById('rs6M').textContent = rs.rs_ratios['6M'] ? rs.rs_ratios['6M'].toFixed(3) : '--';
+        document.getElementById('rs1Y').textContent = rs.rs_ratios['1Y'] ? rs.rs_ratios['1Y'].toFixed(3) : '--';
+
+        // Color-code Classification Card
+        const classificationCard = document.getElementById('rsClassificationCard');
+        classificationCard.classList.remove('bullish', 'bearish', 'neutral');
+        if (rs.classification.includes('Leader') && !rs.classification.includes('Weakening')) {
+            classificationCard.classList.add('bullish');
+        } else if (rs.classification.includes('Laggard')) {
+            classificationCard.classList.add('bearish');
+        } else if (rs.classification.includes('Weakening')) {
+            classificationCard.classList.add('neutral');
+        } else {
+            classificationCard.classList.add('neutral');
+        }
+
+        // Update Trading Summary
+        const tradingSummarySection = document.getElementById('rsTradingSummarySection');
+        const tradingSummary = document.getElementById('rsTradingSummary');
+
+        if (rs.trading_summary) {
+            tradingSummarySection.style.display = 'block';
+            tradingSummary.textContent = rs.trading_summary;
+        } else {
+            tradingSummarySection.style.display = 'none';
+        }
+
+        // Update Signals
+        const signalsSection = document.getElementById('rsSignalsSection');
+        const signalsList = document.getElementById('rsSignalsList');
+        signalsList.innerHTML = '';
+
+        if (rs.signals && rs.signals.length > 0) {
+            signalsSection.style.display = 'block';
+            rs.signals.slice().reverse().forEach(sigData => {
+                const div = document.createElement('div');
+
+                // Color code signal type
+                let typeClass = '';
+                if (sigData.type.includes('Leader')) {
+                    typeClass = 'bullish';
+                } else if (sigData.type.includes('Laggard')) {
+                    typeClass = 'bearish';
+                } else {
+                    typeClass = 'neutral';
+                }
+
+                div.className = `divergence-item ${typeClass}`;
+                div.innerHTML = `
+                    <div class="divergence-type ${typeClass}"><strong>${sigData.type}</strong></div>
+                    <div class="divergence-details">
+                        Date: ${sigData.date}<br>
+                        ${sigData.description}
+                    </div>
+                `;
+                signalsList.appendChild(div);
+            });
+        } else {
+            signalsSection.style.display = 'none';
+        }
+
+        // Update chart
+        if (rs.chart_image) {
+            document.getElementById('rsChartImage').src = 'data:image/png;base64,' + rs.chart_image;
         }
     }
 

@@ -387,7 +387,9 @@ header h1 {
 #crossoverChartImage,
 #donchianChartImage,
 #rsiChartImage,
-#rsiVolumeChartImage {
+#rsiVolumeChartImage,
+#volatilitySqueezeChartImage,
+#rsChartImage {
     width: 100%;
     max-height: 70vh;
     /* Limit height to 70% of viewport height */

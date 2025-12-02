@@ -19,6 +19,7 @@ from donchian_channel_analysis import run_analysis as run_donchian_analysis
 from rsi_divergence_analysis import run_analysis as run_rsi_analysis
 from rsi_volume_divergence import run_analysis as run_rsi_volume_analysis
 from volatility_squeeze_analysis import run_analysis as run_volatility_squeeze_analysis
+from rs_analysis import run_analysis as run_rs_analysis
 
 app = Flask(__name__)
 
@@ -42,6 +43,8 @@ def analyze():
         rsi_config = data.get('rsi_config', {})
         rsi_volume_config = data.get('rsi_volume_config', {})
         volatility_squeeze_config = data.get('volatility_squeeze_config', {})
+        rs_config = data.get('rs_config', {})
+        use_sector_index = data.get('use_sector_index', False)
         
         if not ticker:
             return jsonify({'success': False, 'error': 'Please enter a valid ticker symbol'})
@@ -388,6 +391,49 @@ def analyze():
                 'current_atr': round(volatility_squeeze_results['current_atr'], 2) if volatility_squeeze_results['current_atr'] else None,
                 'signals': signals_formatted,
                 'chart_image': volatility_squeeze_image_base64
+            }
+        
+        # Run RS Analysis
+        if analysis_type in ['all', 'rs']:
+            print(f"Starting RS analysis for {ticker}...")
+            rs_results = run_rs_analysis(ticker=ticker, show_plot=False, config=rs_config, use_sector_index=use_sector_index)
+            print(f"RS analysis result: {rs_results['success']}")
+            
+            if not rs_results['success']:
+                return jsonify(rs_results)
+            
+            # Convert RS figure to base64 image
+            rs_fig = rs_results['figure']
+            rs_buf = BytesIO()
+            rs_fig.savefig(rs_buf, format='png', dpi=100, bbox_inches='tight')
+            rs_buf.seek(0)
+            rs_image_base64 = base64.b64encode(rs_buf.getvalue()).decode('utf-8')
+            rs_buf.close()
+            print("RS chart generated successfully")
+            
+            # Close the figure
+            plt.close(rs_fig)
+            
+            # Format signals for JSON
+            signals_formatted = []
+            
+            if rs_results['signals']:
+                for sig in rs_results['signals']:
+                    signals_formatted.append({
+                        'type': sig['type'],
+                        'date': sig['date'],
+                        'description': sig['description']
+                    })
+            
+            response_data['rs'] = {
+                'benchmark': rs_results['benchmark'],
+                'sector': rs_results.get('sector', None),
+                'rs_ratios': rs_results['rs_ratios'],
+                'rs_score': round(rs_results['rs_score'], 1),
+                'classification': rs_results['classification'],
+                'trading_summary': rs_results['trading_summary'],
+                'signals': signals_formatted,
+                'chart_image': rs_image_base64
             }
         
         return jsonify(response_data)
