@@ -129,7 +129,7 @@ SUPERTREND_CONFIG = {
     # Best: 365 (1 year for trends), 180 (6 months for recent analysis), 730 (2 years for long-term)
     'LOOKBACK_PERIODS': 730,  # 2 year
     
-    'DEFAULT_TICKER': 'DABUR.NS',
+    'DEFAULT_TICKER': 'LT.NS',
     'BATCH_RELATIVE_PATH': '../data/tickers_list.json',
     'RUN_BATCH': False
 }

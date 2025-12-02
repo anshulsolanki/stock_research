@@ -396,7 +396,17 @@ def analyze():
         # Run RS Analysis
         if analysis_type in ['all', 'rs']:
             print(f"Starting RS analysis for {ticker}...")
-            rs_results = run_rs_analysis(ticker=ticker, show_plot=False, config=rs_config, use_sector_index=use_sector_index)
+            
+            # Get benchmark from config
+            benchmark = rs_config.get('BENCHMARK_TICKER', None)
+            
+            rs_results = run_rs_analysis(
+                ticker=ticker, 
+                benchmark=benchmark,
+                show_plot=False, 
+                config=rs_config, 
+                use_sector_index=use_sector_index
+            )
             print(f"RS analysis result: {rs_results['success']}")
             
             if not rs_results['success']:
@@ -412,6 +422,7 @@ def analyze():
             print("RS chart generated successfully")
             
             # Close the figure
+            import matplotlib.pyplot as plt
             plt.close(rs_fig)
             
             # Format signals for JSON
@@ -437,6 +448,45 @@ def analyze():
             }
         
         return jsonify(response_data)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/benchmarks', methods=['GET'])
+def get_benchmarks():
+    """Get list of available benchmark indices from tickers_grouped.json"""
+    try:
+        # Load tickers_grouped.json
+        tickers_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'tickers_grouped.json')
+        
+        if not os.path.exists(tickers_file):
+            return jsonify({'success': False, 'error': 'tickers_grouped.json not found'})
+            
+        import json
+        with open(tickers_file, 'r') as f:
+            data = json.load(f)
+            
+        benchmarks = []
+        
+        # Extract indices from "Sector" -> "stocks"
+        if "Sector" in data and "stocks" in data["Sector"]:
+            for name, symbol in data["Sector"]["stocks"].items():
+                benchmarks.append({
+                    'name': name,
+                    'symbol': symbol
+                })
+        
+        # Add standard benchmarks if not present
+        standard_benchmarks = [
+            {'name': 'Nifty 50', 'symbol': '^NSEI'},
+            {'name': 'S&P 500', 'symbol': '^GSPC'}
+        ]
+        
+        for std in standard_benchmarks:
+            if not any(b['symbol'] == std['symbol'] for b in benchmarks):
+                benchmarks.append(std)
+                
+        return jsonify({'success': True, 'benchmarks': benchmarks})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})

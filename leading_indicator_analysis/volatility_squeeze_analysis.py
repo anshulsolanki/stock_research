@@ -691,7 +691,7 @@ if __name__ == "__main__":
     elif os.path.exists('../tickers.txt') and run_batch:
         analyze_batch('../tickers.txt')
     else:
-        ticker = "DCBBANK.NS"
+        ticker = "FEDERALBNK.NS"
         print(f"Running Volatility Squeeze Analysis for {ticker}...\n")
         
         try:

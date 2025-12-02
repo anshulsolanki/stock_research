@@ -215,9 +215,12 @@ async function analyzeStock(analysisType = 'all') {
     }
 
     if (analysisType === 'all' || analysisType === 'rs') {
+        const selectedBenchmark = document.getElementById('rsBenchmarkSelect').value;
+
         requestBody.rs_config = {
             INTERVAL: document.getElementById('rsInterval').value || '1d',
-            LOOKBACK_PERIODS: parseInt(document.getElementById('rsLookbackPeriods').value) || 504
+            LOOKBACK_PERIODS: parseInt(document.getElementById('rsLookbackPeriods').value) || 504,
+            BENCHMARK_TICKER: selectedBenchmark || null
         };
         requestBody.use_sector_index = document.getElementById('rsUseSectorIndex').checked;
     }
@@ -332,6 +335,25 @@ function displayResults(data, analysisType) {
         const statusCard = document.getElementById('supertrendStatusCard');
         statusCard.classList.remove('uptrend', 'downtrend');
         statusCard.classList.add(supertrend.last_trend === 1 ? 'uptrend' : 'downtrend');
+
+        // Update Supertrend Summary Section
+        const summarySection = document.getElementById('supertrendSummarySection');
+        const summaryDiv = document.getElementById('supertrendSummary');
+
+        const summaryText = `Status: ${supertrend.status}
+Last Price: ${supertrend.last_price.toFixed(2)}
+Supertrend: ${supertrend.supertrend_value.toFixed(2)}
+Date: ${supertrend.last_date}`;
+
+        summaryDiv.textContent = summaryText;
+        summarySection.style.display = 'block';
+
+        // Update border color based on trend
+        if (supertrend.last_trend === 1) {
+            summarySection.style.borderLeftColor = '#28a745'; // Green for uptrend
+        } else {
+            summarySection.style.borderLeftColor = '#dc3545'; // Red for downtrend
+        }
 
         // Update Supertrend chart
         document.getElementById('supertrendChartImage').src = 'data:image/png;base64,' + supertrend.chart_image;
@@ -768,5 +790,43 @@ function showError(message) {
 document.getElementById('tickerInput').addEventListener('keypress', function (event) {
     if (event.key === 'Enter') {
         analyzeStock('all');
+    }
+});
+
+// Fetch benchmarks on load
+document.addEventListener('DOMContentLoaded', async function () {
+    try {
+        const response = await fetch('/api/benchmarks');
+        const data = await response.json();
+
+        if (data.success && data.benchmarks) {
+            const select = document.getElementById('rsBenchmarkSelect');
+            if (select) {
+                data.benchmarks.forEach(bench => {
+                    const option = document.createElement('option');
+                    option.value = bench.symbol;
+                    option.textContent = `${bench.name} (${bench.symbol})`;
+                    select.appendChild(option);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching benchmarks:', error);
+    }
+
+    // Add event listener to disable "Use Sector Index" if manual benchmark selected
+    const benchSelect = document.getElementById('rsBenchmarkSelect');
+    const sectorCheckbox = document.getElementById('rsUseSectorIndex');
+
+    if (benchSelect && sectorCheckbox) {
+        benchSelect.addEventListener('change', function () {
+            if (this.value) {
+                sectorCheckbox.checked = false;
+                sectorCheckbox.disabled = true;
+            } else {
+                sectorCheckbox.disabled = false;
+                sectorCheckbox.checked = true;
+            }
+        });
     }
 });

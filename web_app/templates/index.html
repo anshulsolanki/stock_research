@@ -165,6 +165,15 @@
                         </div>
                     </div>
 
+                    <!-- Supertrend Summary Section -->
+                    <div id="supertrendSummarySection" class="divergence-section"
+                        style="display: none; background: #f8f9fa; border-left: 4px solid #6c757d;">
+                        <h3>📊 Supertrend Summary</h3>
+                        <div id="supertrendSummary" class="divergence-list"
+                            style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.8;">
+                        </div>
+                    </div>
+
                     <div class="metrics-grid">
                         <div class="metric-card supertrend-status-card" id="supertrendStatusCard">
                             <div class="metric-label">Status</div>
@@ -658,7 +667,14 @@
                         <div id="rsConfigPanel" class="config-panel" style="display: none;">
                             <div class="config-group">
                                 <div class="input-group">
-                                    <label for="rsUseSectorIndex">Use Sector Index:</label>
+                                    <label for="rsBenchmarkSelect">Benchmark Index:</label>
+                                    <select id="rsBenchmarkSelect">
+                                        <option value="">Auto-Detect / Sector Index</option>
+                                        <!-- Options will be populated via JS -->
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="rsUseSectorIndex">Use Sector Index (Auto):</label>
                                     <input type="checkbox" id="rsUseSectorIndex" checked>
                                 </div>
                                 <div class="input-group">
