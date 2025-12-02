@@ -92,6 +92,9 @@ async function analyzeStock(analysisType = 'all') {
     } else if (analysisType === 'rsi_volume') {
         activeBtn = document.querySelector('#rsi_volume-tab .run-analysis-btn');
         originalBtnText = activeBtn.textContent;
+    } else if (analysisType === 'volatility_squeeze') {
+        activeBtn = document.querySelector('#volatility_squeeze-tab .run-analysis-btn');
+        originalBtnText = activeBtn.textContent;
     }
 
     // Validation
@@ -190,6 +193,21 @@ async function analyzeStock(analysisType = 'all') {
             LOOKBACK_PERIODS: parseInt(document.getElementById('rsiVolumeLookback').value) || 730,
             RSI_OVERBOUGHT: parseInt(document.getElementById('rsiVolumeOverbought').value) || 70,
             RSI_OVERSOLD: parseInt(document.getElementById('rsiVolumeOversold').value) || 30
+        };
+    }
+
+    if (analysisType === 'all' || analysisType === 'volatility_squeeze') {
+        requestBody.volatility_squeeze_config = {
+            BB_PERIOD: parseInt(document.getElementById('vsBBPeriod').value) || 20,
+            BB_STD: parseFloat(document.getElementById('vsBBStd').value) || 2,
+            ATR_PERIOD: parseInt(document.getElementById('vsATRPeriod').value) || 14,
+            VOLUME_MA_PERIOD: parseInt(document.getElementById('vsVolumeMA').value) || 20,
+            VOLUME_SURGE_MULTIPLIER: parseFloat(document.getElementById('vsVolumeSurge').value) || 1.5,
+            LOOKBACK: parseInt(document.getElementById('vsLookback').value) || 126,
+            SCAN_DAYS: parseInt(document.getElementById('vsScanDays').value) || 60,
+            PERCENTILE_THRESHOLD: parseInt(document.getElementById('vsPercentile').value) || 20,
+            INTERVAL: document.getElementById('vsInterval').value || '1d',
+            LOOKBACK_PERIODS: parseInt(document.getElementById('vsLookbackPeriods').value) || 365
         };
     }
 
@@ -588,6 +606,56 @@ function displayResults(data, analysisType) {
             });
         } else {
             reversalSection.style.display = 'none';
+        }
+    }
+
+    // ========== Volatility Squeeze Data ==========
+    if (data.volatility_squeeze && (analysisType === 'all' || analysisType === 'volatility_squeeze')) {
+        const volSqueeze = data.volatility_squeeze;
+
+        // Update metrics
+        document.getElementById('volatilitySqueezeCurrentBBWidth').textContent = volSqueeze.current_bb_width ? volSqueeze.current_bb_width.toFixed(4) : '--';
+        document.getElementById('volatilitySqueezeCurrentATR').textContent = volSqueeze.current_atr ? volSqueeze.current_atr.toFixed(2) : '--';
+
+        // Update chart
+        if (volSqueeze.chart_image) {
+            document.getElementById('volatilitySqueezeChartImage').src = 'data:image/png;base64,' + volSqueeze.chart_image;
+        }
+
+        // Update Signals
+        const signalsSection = document.getElementById('volatilitySqueezeSignalsSection');
+        const signalsList = document.getElementById('volatilitySqueezeSignalsList');
+        signalsList.innerHTML = '';
+
+        if (volSqueeze.signals && volSqueeze.signals.length > 0) {
+            signalsSection.style.display = 'block';
+            volSqueeze.signals.slice().reverse().forEach(sigData => {
+                const div = document.createElement('div');
+
+                // Color code signal type
+                let typeClass = '';
+                if (sigData.type.includes('Bullish Breakout')) {
+                    typeClass = 'bullish';
+                } else if (sigData.type.includes('Bearish Breakout')) {
+                    typeClass = 'bearish';
+                } else if (sigData.type.includes('BB Squeeze + ATR Contraction')) {
+                    typeClass = 'neutral';
+                } else {
+                    typeClass = ''; // Default for other squeeze types
+                }
+
+                div.className = `divergence-item ${typeClass}`;
+                div.innerHTML = `
+                    <div class="divergence-type ${typeClass}"><strong>${sigData.type}</strong></div>
+                    <div class="divergence-details">
+                        Date: ${sigData.date} | Price: ${sigData.price.toFixed(2)}<br>
+                        BB Width: ${sigData.bb_width.toFixed(4)} | ATR: ${sigData.atr.toFixed(2)}
+                    </div>
+                `;
+                signalsList.appendChild(div);
+            });
+        } else {
+            signalsSection.style.display = 'none';
         }
     }
 

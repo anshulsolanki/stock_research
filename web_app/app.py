@@ -18,6 +18,7 @@ from crossover_analysis import run_analysis as run_crossover_analysis
 from donchian_channel_analysis import run_analysis as run_donchian_analysis
 from rsi_divergence_analysis import run_analysis as run_rsi_analysis
 from rsi_volume_divergence import run_analysis as run_rsi_volume_analysis
+from volatility_squeeze_analysis import run_analysis as run_volatility_squeeze_analysis
 
 app = Flask(__name__)
 
@@ -40,6 +41,7 @@ def analyze():
         donchian_config = data.get('donchian_config', {})
         rsi_config = data.get('rsi_config', {})
         rsi_volume_config = data.get('rsi_volume_config', {})
+        volatility_squeeze_config = data.get('volatility_squeeze_config', {})
         
         if not ticker:
             return jsonify({'success': False, 'error': 'Please enter a valid ticker symbol'})
@@ -345,6 +347,47 @@ def analyze():
                 'bearish_divergences': bearish_divs_formatted,
                 'early_reversals': early_reversals_formatted,
                 'chart_image': rsi_volume_image_base64
+            }
+        
+        # Run Volatility Squeeze Analysis
+        if analysis_type in ['all', 'volatility_squeeze']:
+            print(f"Starting Volatility Squeeze analysis for {ticker}...")
+            volatility_squeeze_results = run_volatility_squeeze_analysis(ticker=ticker, show_plot=False, config=volatility_squeeze_config)
+            print(f"Volatility Squeeze analysis result: {volatility_squeeze_results['success']}")
+            
+            if not volatility_squeeze_results['success']:
+                return jsonify(volatility_squeeze_results)
+            
+            # Convert Volatility Squeeze figure to base64 image
+            volatility_squeeze_fig = volatility_squeeze_results['figure']
+            volatility_squeeze_buf = BytesIO()
+            volatility_squeeze_fig.savefig(volatility_squeeze_buf, format='png', dpi=100, bbox_inches='tight')
+            volatility_squeeze_buf.seek(0)
+            volatility_squeeze_image_base64 = base64.b64encode(volatility_squeeze_buf.getvalue()).decode('utf-8')
+            volatility_squeeze_buf.close()
+            print("Volatility Squeeze chart generated successfully")
+            
+            # Close the figure
+            plt.close(volatility_squeeze_fig)
+            
+            # Format signals for JSON
+            signals_formatted = []
+            
+            if volatility_squeeze_results['signals']:
+                for sig in volatility_squeeze_results['signals']:
+                    signals_formatted.append({
+                        'type': sig['Type'],
+                        'date': sig['Date'].strftime('%Y-%m-%d'),
+                        'price': float(sig['Price']),
+                        'bb_width': float(sig['BB_Width']),
+                        'atr': float(sig['ATR'])
+                    })
+            
+            response_data['volatility_squeeze'] = {
+                'current_bb_width': round(volatility_squeeze_results['current_bb_width'], 4) if volatility_squeeze_results['current_bb_width'] else None,
+                'current_atr': round(volatility_squeeze_results['current_atr'], 2) if volatility_squeeze_results['current_atr'] else None,
+                'signals': signals_formatted,
+                'chart_image': volatility_squeeze_image_base64
             }
         
         return jsonify(response_data)

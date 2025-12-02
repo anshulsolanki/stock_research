@@ -467,13 +467,33 @@ def plot_squeeze(df, ticker, signals, config=None):
     
     lookback = config.get('LOOKBACK', 126)
     
-    fig = plt.figure(figsize=(14, 10))
+    fig = plt.figure(figsize=(14, 8))
     
     # --- Subplot 1: Price & Bollinger Bands ---
     ax1 = plt.subplot(3, 1, 1)
-    ax1.plot(df.index, df['Close'], label='Close', color='blue', alpha=0.6, linewidth=1.5)
-    ax1.plot(df.index, df['BB_Upper'], label='Upper BB', color='gray', linestyle='--', alpha=0.5)
-    ax1.plot(df.index, df['BB_Lower'], label='Lower BB', color='gray', linestyle='--', alpha=0.5)
+    
+    # Plot candlesticks
+    for idx in range(len(df)):
+        date = df.index[idx]
+        open_price = df['Open'].iloc[idx]
+        close_price = df['Close'].iloc[idx]
+        high_price = df['High'].iloc[idx]
+        low_price = df['Low'].iloc[idx]
+        
+        # Determine color based on bullish/bearish candle (Zerodha-style bright colors)
+        color = '#05fa32' if close_price >= open_price else '#fc0c08'  # Bright green for bullish, bright red for bearish
+        
+        # Draw the high-low line (wick)
+        ax1.plot([date, date], [low_price, high_price], color='black', linewidth=0.5, alpha=0.7)
+        
+        # Draw the open-close rectangle (body)
+        height = abs(close_price - open_price)
+        bottom = min(open_price, close_price)
+        ax1.bar(date, height, bottom=bottom, width=0.6, color=color, alpha=0.8, edgecolor='black', linewidth=0.5)
+    
+    # Plot Bollinger Bands
+    ax1.plot(df.index, df['BB_Upper'], label='Upper BB', color='gray', linestyle='--', alpha=0.5, linewidth=1.5)
+    ax1.plot(df.index, df['BB_Lower'], label='Lower BB', color='gray', linestyle='--', alpha=0.5, linewidth=1.5)
     ax1.fill_between(df.index, df['BB_Upper'], df['BB_Lower'], color='gray', alpha=0.1)
     
     # Plot Signals
@@ -528,7 +548,8 @@ def plot_squeeze(df, ticker, signals, config=None):
     ax3.legend(loc='upper right', fontsize=9)
     ax3.grid(True, alpha=0.3)
     
-    plt.tight_layout()
+    # Adjust spacing to prevent overflow
+    plt.subplots_adjust(top=0.95, bottom=0.08, left=0.08, right=0.95, hspace=0.3)
     
     return fig
 
@@ -670,7 +691,7 @@ if __name__ == "__main__":
     elif os.path.exists('../tickers.txt') and run_batch:
         analyze_batch('../tickers.txt')
     else:
-        ticker = "LT.NS"
+        ticker = "DCBBANK.NS"
         print(f"Running Volatility Squeeze Analysis for {ticker}...\n")
         
         try:
