@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div class="stock-info">
+        <h1 id="selectedTicker">Select a Stock</h1>
+        <span class="last-updated" id="timestamp"></span>
+    </div>
+    <div class="header-actions">
+        <div class="search-box-header">
+            <input type="text" id="tickerInput" placeholder="Enter Ticker (e.g. AAPL)" />
+            <button id="analyzeBtn" onclick="analyzeStock('all')">
+                <i class="fas fa-search"></i> Analyze
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="dashboardContent" class="dashboard-content" style="display: none;">
+    <!-- Top Level Tabs -->
+    <div class="tabs-container">
+        <div class="main-tabs">
+            <button class="main-tab-btn active" onclick="switchMainTab('leading')">Leading Indicators</button>
+            <button class="main-tab-btn" onclick="switchMainTab('lagging')">Lagging Indicators</button>
+            <button class="main-tab-btn" onclick="switchMainTab('custom')">Custom Strategy</button>
+        </div>
+    </div>
+
+    <!-- Leading Indicators Section -->
+    <div id="leading-section" class="section-content active">
+        <div class="sub-tabs">
+            <button class="sub-tab-btn active" onclick="switchSubTab('leading', 'rsi')">RSI Divergence</button>
+            <button class="sub-tab-btn" onclick="switchSubTab('leading', 'rsi_volume')">RSI-Volume</button>
+            <button class="sub-tab-btn" onclick="switchSubTab('leading', 'volatility_squeeze')">Volatility
+                Squeeze</button>
+            <button class="sub-tab-btn" onclick="switchSubTab('leading', 'rs')">RS Analysis</button>
+        </div>
+
+        <!-- RSI Tab -->
+        <div id="rsi-tab" class="analysis-panel active">
+            {% include 'partials/rsi_panel.html' %}
+        </div>
+
+        <!-- RSI Volume Tab -->
+        <div id="rsi_volume-tab" class="analysis-panel">
+            {% include 'partials/rsi_volume_panel.html' %}
+        </div>
+
+        <!-- Volatility Squeeze Tab -->
+        <div id="volatility_squeeze-tab" class="analysis-panel">
+            {% include 'partials/volatility_squeeze_panel.html' %}
+        </div>
+
+        <!-- RS Analysis Tab -->
+        <div id="rs-tab" class="analysis-panel">
+            {% include 'partials/rs_panel.html' %}
+        </div>
+    </div>
+
+    <!-- Lagging Indicators Section -->
+    <div id="lagging-section" class="section-content">
+        <div class="sub-tabs">
+            <button class="sub-tab-btn active" onclick="switchSubTab('lagging', 'macd')">MACD</button>
+            <button class="sub-tab-btn" onclick="switchSubTab('lagging', 'supertrend')">Supertrend</button>
+            <button class="sub-tab-btn" onclick="switchSubTab('lagging', 'bollinger')">Bollinger Bands</button>
+            <button class="sub-tab-btn" onclick="switchSubTab('lagging', 'crossover')">Crossover</button>
+            <button class="sub-tab-btn" onclick="switchSubTab('lagging', 'donchian')">Donchian</button>
+        </div>
+
+        <!-- MACD Tab -->
+        <div id="macd-tab" class="analysis-panel active">
+            {% include 'partials/macd_panel.html' %}
+        </div>
+
+        <!-- Supertrend Tab -->
+        <div id="supertrend-tab" class="analysis-panel">
+            {% include 'partials/supertrend_panel.html' %}
+        </div>
+
+        <!-- Bollinger Tab -->
+        <div id="bollinger-tab" class="analysis-panel">
+            {% include 'partials/bollinger_panel.html' %}
+        </div>
+
+        <!-- Crossover Tab -->
+        <div id="crossover-tab" class="analysis-panel">
+            {% include 'partials/crossover_panel.html' %}
+        </div>
+
+        <!-- Donchian Tab -->
+        <div id="donchian-tab" class="analysis-panel">
+            {% include 'partials/donchian_panel.html' %}
+        </div>
+    </div>
+
+    <!-- Custom Strategy Section -->
+    <div id="custom-section" class="section-content">
+        <div class="placeholder-state">
+            <i class="fas fa-flask"></i>
+            <h3>Custom Strategy Builder</h3>
+            <p>This feature is coming soon. You will be able to build and backtest custom strategies here.</p>
+        </div>
+    </div>
+
+</div>
+
+<div id="error" class="error-toast" style="display: none;"></div>
+{% endblock %}

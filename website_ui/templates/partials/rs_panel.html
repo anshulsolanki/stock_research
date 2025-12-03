@@ -1,0 +1,83 @@
+<!-- RS Configuration -->
+<div class="settings-panel">
+    <div class="settings-header" onclick="toggleConfig('rsConfigPanel')">
+        <span><i class="fas fa-sliders-h"></i> Configuration</span>
+        <i class="fas fa-chevron-down"></i>
+    </div>
+    <div id="rsConfigPanel" class="settings-body" style="display: none;">
+        <div class="input-group">
+            <label>Benchmark Index</label>
+            <select id="rsBenchmarkSelect">
+                <option value="">Auto-Detect / Sector Index</option>
+                <!-- Options will be populated via JS -->
+            </select>
+        </div>
+        <div class="input-group checkbox-group">
+            <label for="rsUseSectorIndex">Use Sector Index (Auto)</label>
+            <input type="checkbox" id="rsUseSectorIndex" checked>
+        </div>
+        <div class="input-group">
+            <label>Interval</label>
+            <select id="rsInterval">
+                <option value="1d" selected>1 Day</option>
+                <option value="1wk">1 Week</option>
+                <option value="1mo">1 Month</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>Lookback (Days)</label>
+            <input type="number" id="rsLookbackPeriods" value="504" min="1">
+        </div>
+        <button class="btn-primary" onclick="analyzeStock('rs')">Update Analysis</button>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Benchmark</div>
+        <div class="stat-value" id="rsBenchmark">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Sector</div>
+        <div class="stat-value" id="rsSector">--</div>
+    </div>
+    <div class="stat-card" id="rsClassificationCard">
+        <div class="stat-label">Classification</div>
+        <div class="stat-value" id="rsClassification">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">RS Score</div>
+        <div class="stat-value" id="rsScore">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">1M RS Ratio</div>
+        <div class="stat-value" id="rs1M">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">3M RS Ratio</div>
+        <div class="stat-value" id="rs3M">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">6M RS Ratio</div>
+        <div class="stat-value" id="rs6M">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">1Y RS Ratio</div>
+        <div class="stat-value" id="rs1Y">--</div>
+    </div>
+</div>
+
+<!-- Trading Summary Section -->
+<div id="rsTradingSummarySection" class="summary-card" style="display: none;">
+    <h3><i class="fas fa-chart-bar"></i> Trading Signal Summary</h3>
+    <div id="rsTradingSummary" class="summary-content"></div>
+</div>
+
+<div id="rsSignalsSection" class="alert-section" style="display: none;">
+    <h3><i class="fas fa-bullhorn"></i> RS Signals</h3>
+    <div id="rsSignalsList" class="alert-list"></div>
+</div>
+
+<div class="chart-container">
+    <img id="rsChartImage" src="" alt="RS Analysis Chart" />
+</div>

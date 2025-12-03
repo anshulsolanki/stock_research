@@ -1,0 +1,84 @@
+<!-- RSI-Volume Configuration -->
+<div class="settings-panel">
+    <div class="settings-header" onclick="toggleConfig('rsiVolumeConfigPanel')">
+        <span><i class="fas fa-sliders-h"></i> Configuration</span>
+        <i class="fas fa-chevron-down"></i>
+    </div>
+    <div id="rsiVolumeConfigPanel" class="settings-body" style="display: none;">
+        <div class="input-group">
+            <label>RSI Period</label>
+            <input type="number" id="rsiVolumePeriod" value="14" min="1">
+        </div>
+        <div class="input-group">
+            <label>Peak/Trough Order</label>
+            <input type="number" id="rsiVolumeOrder" value="5" min="1">
+        </div>
+        <div class="input-group">
+            <label>Volume MA Short</label>
+            <input type="number" id="rsiVolumeMAShort" value="20" min="1">
+        </div>
+        <div class="input-group">
+            <label>Volume MA Long</label>
+            <input type="number" id="rsiVolumeMALong" value="50" min="1">
+        </div>
+        <div class="input-group">
+            <label>Interval</label>
+            <select id="rsiVolumeInterval">
+                <option value="1d" selected>1 Day</option>
+                <option value="1wk">1 Week</option>
+                <option value="1mo">1 Month</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>Lookback (Days)</label>
+            <input type="number" id="rsiVolumeLookback" value="730" min="1">
+        </div>
+        <div class="input-group">
+            <label>Overbought</label>
+            <input type="number" id="rsiVolumeOverbought" value="70" min="1" max="100">
+        </div>
+        <div class="input-group">
+            <label>Oversold</label>
+            <input type="number" id="rsiVolumeOversold" value="30" min="1" max="100">
+        </div>
+        <button class="btn-primary" onclick="analyzeStock('rsi_volume')">Update Analysis</button>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Current RSI</div>
+        <div class="stat-value" id="rsiVolumeCurrent">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Current Volume</div>
+        <div class="stat-value" id="rsiVolumeCurrentVol">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Volume MA-20</div>
+        <div class="stat-value" id="rsiVolumeMA20">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Volume MA-50</div>
+        <div class="stat-value" id="rsiVolumeMA50">--</div>
+    </div>
+</div>
+
+<div id="rsiVolumeBullishSection" class="alert-section" style="display: none;">
+    <h3><i class="fas fa-arrow-up"></i> Bullish RSI-Volume Divergences</h3>
+    <div id="rsiVolumeBullishList" class="alert-list"></div>
+</div>
+
+<div id="rsiVolumeBearishSection" class="alert-section" style="display: none;">
+    <h3><i class="fas fa-arrow-down"></i> Bearish RSI-Volume Divergences</h3>
+    <div id="rsiVolumeBearishList" class="alert-list"></div>
+</div>
+
+<div id="rsiVolumeReversalSection" class="alert-section warning" style="display: none;">
+    <h3><i class="fas fa-star"></i> Early Reversal Signals</h3>
+    <div id="rsiVolumeReversalList" class="alert-list"></div>
+</div>
+
+<div class="chart-container">
+    <img id="rsiVolumeChartImage" src="" alt="RSI-Volume Divergence Chart" />
+</div>

@@ -1,0 +1,72 @@
+<!-- MACD Configuration -->
+<div class="settings-panel">
+    <div class="settings-header" onclick="toggleConfig('macdConfigPanel')">
+        <span><i class="fas fa-sliders-h"></i> Configuration</span>
+        <i class="fas fa-chevron-down"></i>
+    </div>
+    <div id="macdConfigPanel" class="settings-body" style="display: none;">
+        <div class="input-group">
+            <label>Fast Period</label>
+            <input type="number" id="macdFast" value="12" min="1">
+        </div>
+        <div class="input-group">
+            <label>Slow Period</label>
+            <input type="number" id="macdSlow" value="26" min="1">
+        </div>
+        <div class="input-group">
+            <label>Signal Period</label>
+            <input type="number" id="macdSignal" value="9" min="1">
+        </div>
+        <div class="input-group">
+            <label>Interval</label>
+            <select id="macdInterval">
+                <option value="1d" selected>1 Day</option>
+                <option value="1wk">1 Week</option>
+                <option value="1mo">1 Month</option>
+                <option value="1h">1 Hour</option>
+                <option value="15m">15 Min</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>Lookback (Days)</label>
+            <input type="number" id="macdLookback" value="730" min="1">
+        </div>
+        <button class="btn-primary" onclick="analyzeStock('macd')">Update Analysis</button>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">MACD Line</div>
+        <div class="stat-value" id="macdLine">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Signal Line</div>
+        <div class="stat-value" id="signalLine">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Histogram</div>
+        <div class="stat-value" id="histogram">--</div>
+    </div>
+    <div class="stat-card" id="trendCard">
+        <div class="stat-label">Trend</div>
+        <div class="stat-value" id="trend">--</div>
+    </div>
+    <div class="stat-card" id="momentumCard">
+        <div class="stat-label">Momentum</div>
+        <div class="stat-value" id="momentum">--</div>
+    </div>
+    <div class="stat-card" id="crossoverCard">
+        <div class="stat-label">Signal</div>
+        <div class="stat-value" id="crossoverSignal">--</div>
+    </div>
+</div>
+
+<div id="divergenceSection" class="alert-section" style="display: none;">
+    <h3><i class="fas fa-exclamation-triangle"></i> Divergences Detected</h3>
+    <div id="divergenceList" class="alert-list"></div>
+</div>
+
+<div class="chart-container">
+    <img id="macdChartImage" src="" alt="MACD Chart" />
+</div>

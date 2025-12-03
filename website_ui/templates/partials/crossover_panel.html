@@ -1,0 +1,64 @@
+<!-- Crossover Configuration -->
+<div class="settings-panel">
+    <div class="settings-header" onclick="toggleConfig('crossConfigPanel')">
+        <span><i class="fas fa-sliders-h"></i> Configuration</span>
+        <i class="fas fa-chevron-down"></i>
+    </div>
+    <div id="crossConfigPanel" class="settings-body" style="display: none;">
+        <div class="input-group">
+            <label>Short Window</label>
+            <input type="number" id="crossShort" value="20" min="1">
+        </div>
+        <div class="input-group">
+            <label>Medium Window</label>
+            <input type="number" id="crossMedium" value="50" min="1">
+        </div>
+        <div class="input-group">
+            <label>Long Window</label>
+            <input type="number" id="crossLong" value="200" min="1">
+        </div>
+        <div class="input-group">
+            <label>Interval</label>
+            <select id="crossInterval">
+                <option value="1d" selected>1 Day</option>
+                <option value="1wk">1 Week</option>
+                <option value="1mo">1 Month</option>
+                <option value="1h">1 Hour</option>
+                <option value="15m">15 Min</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>Lookback (Days)</label>
+            <input type="number" id="crossLookback" value="730" min="1">
+        </div>
+        <button class="btn-primary" onclick="analyzeStock('crossover')">Update Analysis</button>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">EMA 20</div>
+        <div class="stat-value" id="ema20">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">EMA 50</div>
+        <div class="stat-value" id="ema50">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">EMA 200</div>
+        <div class="stat-value" id="ema200">--</div>
+    </div>
+    <div class="stat-card" id="crossoverTrendCard">
+        <div class="stat-label">Trend Status</div>
+        <div class="stat-value" id="crossoverTrend">--</div>
+    </div>
+</div>
+
+<div id="goldenCrossSection" class="alert-section" style="display: none;">
+    <h3><i class="fas fa-star"></i> Golden Cross Detected</h3>
+    <div id="goldenCrossInfo" class="alert-list"></div>
+</div>
+
+<div class="chart-container">
+    <img id="crossoverChartImage" src="" alt="Crossover Chart" />
+</div>

@@ -1,0 +1,64 @@
+<!-- Donchian Configuration -->
+<div class="settings-panel">
+    <div class="settings-header" onclick="toggleConfig('donchianConfigPanel')">
+        <span><i class="fas fa-sliders-h"></i> Configuration</span>
+        <i class="fas fa-chevron-down"></i>
+    </div>
+    <div id="donchianConfigPanel" class="settings-body" style="display: none;">
+        <div class="input-group">
+            <label>Window</label>
+            <input type="number" id="donchianWindow" value="20" min="1">
+        </div>
+        <div class="input-group">
+            <label>Interval</label>
+            <select id="donchianInterval">
+                <option value="1d" selected>1 Day</option>
+                <option value="1wk">1 Week</option>
+                <option value="1mo">1 Month</option>
+                <option value="1h">1 Hour</option>
+                <option value="15m">15 Min</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>Lookback (Days)</label>
+            <input type="number" id="donchianLookback" value="730" min="1">
+        </div>
+        <button class="btn-primary" onclick="analyzeStock('donchian')">Update Analysis</button>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Upper Channel</div>
+        <div class="stat-value" id="donchianUpper">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Lower Channel</div>
+        <div class="stat-value" id="donchianLower">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Middle Channel</div>
+        <div class="stat-value" id="donchianMiddle">--</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Last Price</div>
+        <div class="stat-value" id="donchianPrice">--</div>
+    </div>
+    <div class="stat-card" id="donchianStatusCard">
+        <div class="stat-label">Status</div>
+        <div class="stat-value" id="donchianStatus">--</div>
+    </div>
+    <div class="stat-card" id="donchianSignalCard">
+        <div class="stat-label">Signal</div>
+        <div class="stat-value" id="donchianSignal">--</div>
+    </div>
+</div>
+
+<div id="donchianSignalSection" class="alert-section" style="display: none;">
+    <h3><i class="fas fa-bullhorn"></i> Recent Breakouts</h3>
+    <div id="donchianSignalList" class="alert-list"></div>
+</div>
+
+<div class="chart-container">
+    <img id="donchianChartImage" src="" alt="Donchian Channels Chart" />
+</div>

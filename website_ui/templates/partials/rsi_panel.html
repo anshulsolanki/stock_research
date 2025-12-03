@@ -1,0 +1,54 @@
+<!-- RSI Configuration -->
+<div class="settings-panel">
+    <div class="settings-header" onclick="toggleConfig('rsiConfigPanel')">
+        <span><i class="fas fa-sliders-h"></i> Configuration</span>
+        <i class="fas fa-chevron-down"></i>
+    </div>
+    <div id="rsiConfigPanel" class="settings-body" style="display: none;">
+        <div class="input-group">
+            <label>RSI Period</label>
+            <input type="number" id="rsiPeriod" value="14" min="1">
+        </div>
+        <div class="input-group">
+            <label>Peak/Trough Order</label>
+            <input type="number" id="rsiOrder" value="5" min="1">
+        </div>
+        <div class="input-group">
+            <label>Interval</label>
+            <select id="rsiInterval">
+                <option value="1d" selected>1 Day</option>
+                <option value="1wk">1 Week</option>
+                <option value="1mo">1 Month</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>Lookback (Days)</label>
+            <input type="number" id="rsiLookback" value="730" min="1">
+        </div>
+        <div class="input-group">
+            <label>Overbought</label>
+            <input type="number" id="rsiOverbought" value="70" min="1" max="100">
+        </div>
+        <div class="input-group">
+            <label>Oversold</label>
+            <input type="number" id="rsiOversold" value="30" min="1" max="100">
+        </div>
+        <button class="btn-primary" onclick="analyzeStock('rsi')">Update Analysis</button>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Current RSI</div>
+        <div class="stat-value" id="rsiCurrent">--</div>
+    </div>
+</div>
+
+<div id="rsiDivergenceSection" class="alert-section" style="display: none;">
+    <h3><i class="fas fa-exclamation-triangle"></i> Divergences Detected</h3>
+    <div id="rsiDivergenceList" class="alert-list"></div>
+</div>
+
+<div class="chart-container">
+    <img id="rsiChartImage" src="" alt="RSI Divergence Chart" />
+</div>

@@ -3,3 +3,4 @@
 - Add the leading indicators 
 - update the UI to show the summary as well - of lagging and leading indicators 
 - find the best strategy to use lagging and leading indicators in combination and then implement specific functions for each of these starategy
+- look at https://github.com/virattt/dexter and what we can take from here

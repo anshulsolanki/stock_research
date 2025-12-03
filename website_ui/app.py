@@ -25,8 +25,13 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    """Serve the main page"""
-    return render_template('index.html')
+    """Serve the main dashboard page"""
+    return render_template('dashboard.html')
+
+@app.route('/batch')
+def batch_analysis():
+    """Serve the batch analysis page"""
+    return render_template('batch_analysis.html')
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
@@ -485,4 +490,4 @@ def get_benchmarks():
         return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    app.run(debug=True, host='127.0.0.1', port=5001)

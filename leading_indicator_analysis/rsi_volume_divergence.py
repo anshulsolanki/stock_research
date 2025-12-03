@@ -241,7 +241,21 @@ def fetch_data(ticker, config=None):
     lookback_periods = cfg.get('LOOKBACK_PERIODS', RSI_VOLUME_CONFIG['LOOKBACK_PERIODS'])
     
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=lookback_periods)
+    
+    # Adjust lookback calculation based on interval to ensure sufficient data points
+    if interval in ['1wk', '1w']:
+        # For weekly data, need 7x more calendar days to get same number of data points
+        start_date = end_date - timedelta(days=lookback_periods * 7)
+    elif interval in ['1mo', '1M']:
+        # For monthly data, need 30x more calendar days
+        start_date = end_date - timedelta(days=lookback_periods * 30)
+    elif 'm' in interval or 'h' in interval:
+        # For intraday intervals (15m, 1h, etc.), use a fixed period of days
+        # Intraday data is typically limited to 60 days max by yfinance
+        start_date = end_date - timedelta(days=min(60, lookback_periods))
+    else:
+        # For daily intervals ('1d'), use lookback_periods as days directly
+        start_date = end_date - timedelta(days=lookback_periods)
     
     df = yf.download(ticker, start=start_date, end=end_date, interval=interval, 
                      progress=False, auto_adjust=False, multi_level_index=False)
