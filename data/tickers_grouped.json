@@ -13,6 +13,20 @@
             "Nifty Infra": "^CNXINFRA"
         }
     },
+    "Bank": {
+        "index_symbol": "^NSEBANK",
+        "stocks": {
+            "Axis Bank": "AXISBANK.NS",
+            "ICICI Bank": "ICICIBANK.NS",
+            "HDFC Bank": "HDFCBANK.NS",
+            "Kotak Mahindra Bank": "KOTAKBANK.NS",
+            "IndusInd Bank": "IBN.NS",
+            "Punjab National": "PNB.NS",
+            "Bank of Baroda": "BANKBARODA.NS",
+            "Union Bank": "UNIONBANK.NS",
+            "Bank of India": "BANKOFINDIA.NS"
+        }
+    },
     "FMCG": {
         "index_symbol": "^CNXFMCG",
         "stocks": {

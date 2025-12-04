@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div class="stock-info">
+        <h1>Market Analysis</h1>
+        <span class="last-updated" id="timestamp"></span>
+    </div>
+</div>
+
+<div class="dashboard-content">
+    <!-- Top Level Tabs -->
+    <div class="tabs-container">
+        <div class="main-tabs">
+            <button class="main-tab-btn active" onclick="switchMainTab('sector_analysis')">Sector Analysis</button>
+            <button class="main-tab-btn" onclick="switchMainTab('stocks_in_sector')">Stocks in Sector</button>
+        </div>
+    </div>
+
+    <!-- Sector Analysis Section -->
+    <div id="sector_analysis-section" class="section-content active">
+        <div class="analysis-controls">
+            <button class="action-btn" onclick="loadSectorAnalysis(true)">
+                <i class="fas fa-sync-alt"></i> Refresh Analysis
+            </button>
+        </div>
+
+        <div id="sectorLoading" class="loading-state" style="display: none;">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Analyzing Sectors...</p>
+        </div>
+
+        <div id="sectorContent" style="display: none;">
+            <!-- Chart Section -->
+            <div class="chart-container">
+                <h3>Sector Relative Strength Trends</h3>
+                <img id="sectorChartImage" class="analysis-chart" alt="Sector Analysis Chart">
+            </div>
+
+            <!-- Results Table -->
+            <div class="results-container">
+                <h3>Sector Performance Metrics</h3>
+                <div class="table-responsive">
+                    <table class="data-table" id="sectorTable">
+                        <thead>
+                            <tr>
+                                <th>Sector</th>
+                                <th>Score</th>
+                                <th>1M RS</th>
+                                <th>3M RS</th>
+                                <th>6M RS</th>
+                                <th>1Y RS</th>
+                                <th>Consistent</th>
+                                <th>Emerging</th>
+                                <th>Turnaround</th>
+                                <th>MA Breakout</th>
+                                <th>Vol Surge</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Rows will be added here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stocks in Sector Section -->
+    <div id="stocks_in_sector-section" class="section-content">
+        <div class="analysis-controls">
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <select id="sectorSelect" class="form-control" style="max-width: 300px;">
+                    <option value="">Select a Sector...</option>
+                </select>
+                <button class="action-btn" onclick="analyzeStocksInSector(false)" id="analyzeStocksBtn">
+                    <i class="fas fa-chart-line"></i> Analyze Stocks
+                </button>
+                <button class="action-btn" onclick="analyzeStocksInSector(true)" id="refreshStocksBtn">
+                    <i class="fas fa-sync-alt"></i> Refresh Analysis
+                </button>
+            </div>
+        </div>
+
+        <div id="stocksInSectorLoading" class="loading-state" style="display: none;">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Analyzing Stocks in Sector...</p>
+        </div>
+
+        <div id="stocksInSectorContent" style="display: none;">
+            <div class="dashboard-header" style="margin-top: 1rem;">
+                <div class="stock-info">
+                    <h2 id="stockSectorTitle">Sector Analysis</h2>
+                    <span id="stockSectorIndex" class="last-updated"></span>
+                </div>
+            </div>
+
+            <!-- Chart Section -->
+            <div class="chart-container">
+                <h3>Stock Relative Strength Trends</h3>
+                <img id="stocksInSectorChartImage" class="analysis-chart" alt="Stocks in Sector Chart">
+            </div>
+
+            <!-- Results Table -->
+            <div class="results-container">
+                <h3>Stock Performance Metrics</h3>
+                <div class="table-responsive">
+                    <table class="data-table" id="stocksInSectorTable">
+                        <thead>
+                            <tr>
+                                <th>Stock</th>
+                                <th>Score</th>
+                                <th>1M RS</th>
+                                <th>3M RS</th>
+                                <th>6M RS</th>
+                                <th>1Y RS</th>
+                                <th>Consistent</th>
+                                <th>Emerging</th>
+                                <th>Turnaround</th>
+                                <th>MA Breakout</th>
+                                <th>Vol Surge</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Rows will be added here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

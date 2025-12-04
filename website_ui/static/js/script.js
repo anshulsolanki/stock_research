@@ -1,3 +1,9 @@
+// Cache for sector analysis results
+let sectorAnalysisCache = null;
+
+// Cache for stocks in sector analysis results (per sector)
+let stocksInSectorCache = {};
+
 // Tab Switching Logic
 function switchMainTab(tabName) {
     // Update buttons
@@ -16,6 +22,11 @@ function switchMainTab(tabName) {
     const targetSection = document.getElementById(`${tabName}-section`);
     if (targetSection) {
         targetSection.classList.add('active');
+    }
+
+    // Auto-load data for specific tabs
+    if (tabName === 'sector_analysis') {
+        loadSectorAnalysis(false); // false = don't force refresh, use cache if available
     }
 }
 
@@ -648,14 +659,36 @@ function showError(message) {
 }
 
 // Allow Enter key to trigger analysis
-document.getElementById('tickerInput').addEventListener('keypress', function (event) {
-    if (event.key === 'Enter') {
-        analyzeStock('all');
-    }
-});
+const tickerInput = document.getElementById('tickerInput');
+if (tickerInput) {
+    tickerInput.addEventListener('keypress', function (event) {
+        if (event.key === 'Enter') {
+            analyzeStock('all');
+        }
+    });
+}
 
-// Fetch benchmarks on load
-document.addEventListener('DOMContentLoaded', async function () {
+// Initialize application
+function initApp() {
+    fetchBenchmarks();
+    loadStockData();
+    loadSectors();
+
+    // Check if Sector Analysis is active and load it
+    const sectorSection = document.getElementById('sector_analysis-section');
+    if (sectorSection && sectorSection.classList.contains('active')) {
+        loadSectorAnalysis();
+    }
+}
+
+// Check if DOM is already loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
+
+async function fetchBenchmarks() {
     try {
         const response = await fetch('/api/benchmarks');
         const data = await response.json();
@@ -674,4 +707,287 @@ document.addEventListener('DOMContentLoaded', async function () {
     } catch (error) {
         console.error('Failed to fetch benchmarks:', error);
     }
-});
+}
+
+async function loadStockData() {
+    try {
+        // 1. Fetch Watchlist
+        const watchlistResponse = await fetch('/api/watchlist');
+        const watchlistData = await watchlistResponse.json();
+
+        if (watchlistData.success && watchlistData.watchlist) {
+            const watchlist = watchlistData.watchlist;
+
+            // Populate Sidebar Watchlist
+            const sidebarList = document.getElementById('stockList');
+            if (sidebarList) {
+                sidebarList.innerHTML = ''; // Clear existing
+                for (const [name, symbol] of Object.entries(watchlist)) {
+                    const li = document.createElement('li');
+                    li.className = 'stock-item';
+                    li.onclick = () => selectStock(symbol);
+                    li.innerHTML = `
+                        <span class="stock-symbol">${symbol}</span>
+                        <span class="stock-name">${name}</span>
+                    `;
+                    sidebarList.appendChild(li);
+                }
+            }
+
+            // Populate Settings Watchlist Listbox
+            const settingsWatchlist = document.getElementById('watchlistSettings');
+            if (settingsWatchlist) {
+                settingsWatchlist.innerHTML = '';
+                for (const [name, symbol] of Object.entries(watchlist)) {
+                    const option = document.createElement('option');
+                    option.value = symbol;
+                    option.textContent = `${name} (${symbol})`;
+                    settingsWatchlist.appendChild(option);
+                }
+            }
+        } else {
+            console.error('Watchlist API failed:', watchlistData.error);
+            showError('Failed to load watchlist: ' + (watchlistData.error || 'Unknown error'));
+        }
+
+        // 2. Fetch Tickers List (for Settings)
+        const tickersResponse = await fetch('/api/tickers');
+        const tickersData = await tickersResponse.json();
+
+        if (tickersData.success && tickersData.tickers) {
+            const tickers = tickersData.tickers;
+
+            // Populate Settings Tickers Listbox
+            const settingsTickers = document.getElementById('tickersList');
+            if (settingsTickers) {
+                settingsTickers.innerHTML = '';
+                for (const [name, symbol] of Object.entries(tickers)) {
+                    const option = document.createElement('option');
+                    option.value = symbol;
+                    option.textContent = `${name} (${symbol})`;
+                    settingsTickers.appendChild(option);
+                }
+            }
+        } else {
+            console.error('Tickers API failed:', tickersData.error);
+            showError('Failed to load tickers: ' + (tickersData.error || 'Unknown error'));
+        }
+
+    } catch (error) {
+        console.error('Error loading stock data:', error);
+        showError('Failed to load stock lists');
+    }
+}
+
+// ========== Sector Analysis Logic ==========
+async function loadSectorAnalysis(forceRefresh = false) {
+    console.log('loadSectorAnalysis called, forceRefresh:', forceRefresh);
+    const loadingEl = document.getElementById('sectorLoading');
+    const contentEl = document.getElementById('sectorContent');
+
+    // If we have cached data and not forcing refresh, use cache
+    if (sectorAnalysisCache && !forceRefresh) {
+        console.log('Using cached sector analysis data');
+        displaySectorAnalysis(sectorAnalysisCache);
+        return;
+    }
+
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (contentEl) contentEl.style.display = 'none';
+
+    try {
+        console.log('Fetching sector analysis data from API...');
+        const response = await fetch('/api/market_analysis/sector');
+        const data = await response.json();
+        console.log('Sector analysis data received:', data);
+
+        if (data.success) {
+            // Cache the results
+            sectorAnalysisCache = data;
+
+            // Display the data
+            displaySectorAnalysis(data);
+        } else {
+            console.error('Sector analysis failed:', data.error);
+            showError('Sector analysis failed: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error loading sector analysis:', error);
+        showError('Error loading sector analysis');
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+    }
+}
+
+// Helper function to display sector analysis data
+function displaySectorAnalysis(data) {
+    const contentEl = document.getElementById('sectorContent');
+
+    // Display Chart
+    const chartImg = document.getElementById('sectorChartImage');
+    if (chartImg) {
+        chartImg.src = 'data:image/png;base64,' + data.chart_image;
+    }
+
+    // Populate Table
+    const tableBody = document.querySelector('#sectorTable tbody');
+    if (tableBody) {
+        tableBody.innerHTML = '';
+
+        data.data.forEach(row => {
+            const tr = document.createElement('tr');
+
+            // Helper for boolean icons
+            const getIcon = (val) => val ? '<i class="fas fa-check-circle text-success"></i>' : '<span class="text-muted">-</span>';
+
+            tr.innerHTML = `
+                <td class="fw-bold">${row.Sector}</td>
+                <td><span class="badge bg-primary">${row.Score}</span></td>
+                <td>${row['1M'] || '-'}</td>
+                <td>${row['3M'] || '-'}</td>
+                <td>${row['6M'] || '-'}</td>
+                <td>${row['1Y'] || '-'}</td>
+                <td class="text-center">${getIcon(row.Consistent)}</td>
+                <td class="text-center">${getIcon(row.Emerging)}</td>
+                <td class="text-center">${getIcon(row.Early_Turnaround)}</td>
+                <td class="text-center">${getIcon(row.MA_Breakout)}</td>
+                <td class="text-center">${getIcon(row.Volume_Surge)}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    }
+
+    if (contentEl) contentEl.style.display = 'block';
+}
+
+// ========== Stocks in Sector Analysis Logic ==========
+
+// Load available sectors into dropdown
+async function loadSectors() {
+    try {
+        const response = await fetch('/api/sectors');
+        const data = await response.json();
+
+        if (data.success && data.sectors) {
+            const select = document.getElementById('sectorSelect');
+            if (select) {
+                // Clear existing options except the first one
+                select.innerHTML = '<option value="">Select a Sector...</option>';
+
+                // Add sector options
+                data.sectors.forEach(sector => {
+                    const option = document.createElement('option');
+                    option.value = sector.name;
+                    option.textContent = `${sector.name} (${sector.index_symbol})`;
+                    select.appendChild(option);
+                });
+            }
+        } else {
+            console.error('Failed to load sectors:', data.error);
+        }
+    } catch (error) {
+        console.error('Error loading sectors:', error);
+    }
+}
+
+// Analyze stocks in selected sector
+async function analyzeStocksInSector(forceRefresh = false) {
+    const select = document.getElementById('sectorSelect');
+    const sectorName = select.value;
+
+    if (!sectorName) {
+        showError('Please select a sector first');
+        return;
+    }
+
+    console.log('analyzeStocksInSector called, sector:', sectorName, 'forceRefresh:', forceRefresh);
+
+    const loadingEl = document.getElementById('stocksInSectorLoading');
+    const contentEl = document.getElementById('stocksInSectorContent');
+
+    // If we have cached data for this sector and not forcing refresh, use cache
+    if (stocksInSectorCache[sectorName] && !forceRefresh) {
+        console.log('Using cached stocks in sector data for', sectorName);
+        displayStocksInSector(stocksInSectorCache[sectorName]);
+        return;
+    }
+
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (contentEl) contentEl.style.display = 'none';
+
+    try {
+        console.log('Fetching stocks in sector data from API for', sectorName);
+        const response = await fetch('/api/market_analysis/stocks_in_sector', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ sector: sectorName })
+        });
+        const data = await response.json();
+        console.log('Stocks in sector data received:', data);
+
+        if (data.success) {
+            // Cache the results for this sector
+            stocksInSectorCache[sectorName] = data;
+
+            // Display the data
+            displayStocksInSector(data);
+        } else {
+            console.error('Stocks in sector analysis failed:', data.error);
+            showError('Analysis failed: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error loading stocks in sector analysis:', error);
+        showError('Error loading analysis');
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+    }
+}
+
+// Helper function to display stocks in sector analysis data
+function displayStocksInSector(data) {
+    const contentEl = document.getElementById('stocksInSectorContent');
+
+    // Update title and index info
+    const titleEl = document.getElementById('stockSectorTitle');
+    const indexEl = document.getElementById('stockSectorIndex');
+    if (titleEl) titleEl.textContent = `${data.sector_name} Sector Analysis`;
+    if (indexEl) indexEl.textContent = `Benchmark: ${data.sector_index}`;
+
+    // Display Chart
+    const chartImg = document.getElementById('stocksInSectorChartImage');
+    if (chartImg) {
+        chartImg.src = 'data:image/png;base64,' + data.chart_image;
+    }
+
+    // Populate Table
+    const tableBody = document.querySelector('#stocksInSectorTable tbody');
+    if (tableBody) {
+        tableBody.innerHTML = '';
+
+        data.data.forEach(row => {
+            const tr = document.createElement('tr');
+
+            // Helper for boolean icons
+            const getIcon = (val) => val ? '<i class="fas fa-check-circle text-success"></i>' : '<span class="text-muted">-</span>';
+
+            tr.innerHTML = `
+                <td class="fw-bold">${row.Stock}</td>
+                <td><span class="badge bg-primary">${row.Score}</span></td>
+                <td>${row['1M'] || '-'}</td>
+                <td>${row['3M'] || '-'}</td>
+                <td>${row['6M'] || '-'}</td>
+                <td>${row['1Y'] || '-'}</td>
+                <td class="text-center">${getIcon(row.Consistent)}</td>
+                <td class="text-center">${getIcon(row.Emerging)}</td>
+                <td class="text-center">${getIcon(row.Early_Turnaround)}</td>
+                <td class="text-center">${getIcon(row.MA_Breakout)}</td>
+                <td class="text-center">${getIcon(row.Volume_Surge)}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    }
+
+    if (contentEl) contentEl.style.display = 'block';
+}

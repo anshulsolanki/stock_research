@@ -6,10 +6,12 @@ from io import BytesIO
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Add parent directory to path to import analysis modules
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lagging_indicator_analysis'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'leading_indicator_analysis'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'market_analysis'))
 
 from macd_analysis import run_analysis as run_macd_analysis
 from supertrend_analysis import run_analysis as run_supertrend_analysis
@@ -20,6 +22,8 @@ from rsi_divergence_analysis import run_analysis as run_rsi_analysis
 from rsi_volume_divergence import run_analysis as run_rsi_volume_analysis
 from volatility_squeeze_analysis import run_analysis as run_volatility_squeeze_analysis
 from rs_analysis import run_analysis as run_rs_analysis
+from sector_analysis import run_analysis as run_sector_analysis
+from stock_in_sector_analysis import run_analysis as run_stock_in_sector_analysis
 
 app = Flask(__name__)
 
@@ -28,10 +32,53 @@ def index():
     """Serve the main dashboard page"""
     return render_template('dashboard.html')
 
+@app.route('/market_analysis')
+def market_analysis():
+    """Serve the market analysis page"""
+    return render_template('market_analysis.html')
+
 @app.route('/batch')
 def batch_analysis():
     """Serve the batch analysis page"""
     return render_template('batch_analysis.html')
+
+@app.route('/settings')
+def settings():
+    """Serve the settings page"""
+    return render_template('settings.html')
+
+@app.route('/api/tickers', methods=['GET'])
+def get_tickers():
+    """Get list of tickers from tickers_list.json"""
+    try:
+        tickers_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'tickers_list.json')
+        if not os.path.exists(tickers_file):
+            return jsonify({'success': False, 'error': 'tickers_list.json not found'})
+            
+        import json
+        with open(tickers_file, 'r') as f:
+            data = json.load(f)
+            
+        return jsonify({'success': True, 'tickers': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/watchlist', methods=['GET'])
+def get_watchlist():
+    """Get list of watchlist stocks from watchlist.json"""
+    try:
+        watchlist_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'watchlist.json')
+        if not os.path.exists(watchlist_file):
+            return jsonify({'success': False, 'error': 'watchlist.json not found'})
+            
+        import json
+        with open(watchlist_file, 'r') as f:
+            data = json.load(f)
+            
+        return jsonify({'success': True, 'watchlist': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
@@ -485,6 +532,141 @@ def get_benchmarks():
                 benchmarks.append(std)
                 
         return jsonify({'success': True, 'benchmarks': benchmarks})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/sectors', methods=['GET'])
+def get_sectors():
+    """Get list of available sectors from tickers_grouped.json"""
+    try:
+        # Load tickers_grouped.json
+        tickers_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'tickers_grouped.json')
+        
+        if not os.path.exists(tickers_file):
+            return jsonify({'success': False, 'error': 'tickers_grouped.json not found'})
+            
+        import json
+        with open(tickers_file, 'r') as f:
+            data = json.load(f)
+            
+        sectors = []
+        
+        # Extract all sectors except "Sector" which is for indices
+        for sector_name, sector_data in data.items():
+            if sector_name != "Sector":
+                sectors.append({
+                    'name': sector_name,
+                    'index_symbol': sector_data['index_symbol']
+                })
+        
+        return jsonify({'success': True, 'sectors': sectors})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/market_analysis/sector', methods=['GET'])
+def get_sector_analysis():
+    """Run and return Sector Analysis results"""
+    try:
+        results = run_sector_analysis(show_plot=False)
+        
+        if not results['success']:
+            return jsonify(results)
+            
+        # Convert figure to base64
+        fig = results['figure']
+        buf = BytesIO()
+        fig.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+        buf.seek(0)
+        image_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+        buf.close()
+        plt.close(fig)
+        
+        # Format table data
+        df = results['results']
+        table_data = []
+        
+        # Columns to include
+        cols = ['1M', '3M', '6M', '1Y', 'Consistent', 'Emerging', 'Early_Turnaround', 'MA_Breakout', 'Volume_Surge', 'Score']
+        
+        for idx, row in df.iterrows():
+            item = {'Sector': idx}
+            for col in cols:
+                if col in row:
+                    val = row[col]
+                    # Handle boolean values
+                    if isinstance(val, bool) or isinstance(val, np.bool_):
+                        item[col] = bool(val)
+                    # Handle float values
+                    elif isinstance(val, float) or isinstance(val, np.float64):
+                        item[col] = round(float(val), 3)
+                    else:
+                        item[col] = val
+            table_data.append(item)
+            
+        return jsonify({
+            'success': True,
+            'chart_image': image_base64,
+            'data': table_data
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/market_analysis/stocks_in_sector', methods=['POST'])
+def get_stocks_in_sector_analysis():
+    """Run and return Stocks in Sector Analysis for a given sector"""
+    try:
+        data = request.get_json()
+        sector_name = data.get('sector', '').strip()
+        
+        if not sector_name:
+            return jsonify({'success': False, 'error': 'Please provide a sector name'})
+        
+        results = run_stock_in_sector_analysis(sector_name, show_plot=False)
+        
+        if not results['success']:
+            return jsonify(results)
+            
+        # Convert figure to base64
+        fig = results['figure']
+        buf = BytesIO()
+        fig.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+        buf.seek(0)
+        image_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+        buf.close()
+        plt.close(fig)
+        
+        # Format table data
+        df = results['results']
+        table_data = []
+        
+        # Columns to include
+        cols = ['1M', '3M', '6M', '1Y', 'Consistent', 'Emerging', 'Early_Turnaround', 'MA_Breakout', 'Volume_Surge', 'Score']
+        
+        for idx, row in df.iterrows():
+            item = {'Stock': idx}
+            for col in cols:
+                if col in row:
+                    val = row[col]
+                    # Handle boolean values
+                    if isinstance(val, bool) or isinstance(val, np.bool_):
+                        item[col] = bool(val)
+                    # Handle float values
+                    elif isinstance(val, float) or isinstance(val, np.float64):
+                        item[col] = round(float(val), 3)
+                    else:
+                        item[col] = val
+            table_data.append(item)
+            
+        return jsonify({
+            'success': True,
+            'chart_image': image_base64,
+            'data': table_data,
+            'sector_name': results['sector_name'],
+            'sector_index': results['sector_index']
+        })
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})

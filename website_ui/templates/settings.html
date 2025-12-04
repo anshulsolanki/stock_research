@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div class="stock-info">
+        <h1>Settings</h1>
+    </div>
+</div>
+
+<div class="settings-container">
+    <div class="settings-section">
+        <h3>Selected Stock List</h3>
+        <div class="list-box-container">
+            <select id="tickersList" class="stock-select-box" size="10">
+                <!-- Populated by JS -->
+            </select>
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h3>Watchlist</h3>
+        <div class="list-box-container">
+            <select id="watchlistSettings" class="stock-select-box" size="10">
+                <!-- Populated by JS -->
+            </select>
+        </div>
+    </div>
+</div>
+{% endblock %}

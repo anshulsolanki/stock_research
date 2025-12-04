@@ -309,11 +309,11 @@ def perform_rs_analysis(index_symbol, stocks, include_technical=True):
     
     return rs_table, data
 
-def plot_rs_trends(data, index_symbol, stocks, lookback_days=365):
+def plot_rs_trends(data, index_symbol, stocks, lookback_days=365, show_plot=True):
     """
     Plots the Relative Strength trends over time.
     """
-    plt.figure(figsize=(14, 8))
+    fig = plt.figure(figsize=(14, 8))
     
     # Filter data for lookback period
     start_date = data.index.max() - timedelta(days=lookback_days)
@@ -322,12 +322,12 @@ def plot_rs_trends(data, index_symbol, stocks, lookback_days=365):
     # Normalize Index
     if index_symbol not in subset.columns:
         print(f"Index {index_symbol} not found in data for plotting.")
-        return
+        return None
 
     # Avoid division by zero or empty slice
     if subset.empty:
         print("No data to plot.")
-        return
+        return None
 
     index_series = subset[index_symbol] / subset[index_symbol].iloc[0]
     
@@ -359,15 +359,87 @@ def plot_rs_trends(data, index_symbol, stocks, lookback_days=365):
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.grid(True)
     plt.tight_layout()
-    plt.show()
+    
+    if show_plot:
+        plt.show()
+        
+    return fig
 
-import json
-import os
+
+def run_analysis(show_plot=False):
+    """
+    Runs the Sector Analysis for the web app.
+    
+    Args:
+        show_plot (bool): If True, displays the plot. If False, returns the figure object.
+        
+    Returns:
+        dict: Analysis results containing:
+            - 'success': bool
+            - 'results': pd.DataFrame (the RS table)
+            - 'figure': matplotlib.figure.Figure
+            - 'error': str (if failed)
+    """
+    import os
+    import json
+    
+    try:
+        # Load configurations from JSON file
+        # Try multiple paths to find the file
+        possible_paths = [
+            os.path.join(os.path.dirname(__file__), '..', 'data', 'tickers_grouped.json'),
+            os.path.join(os.path.dirname(__file__), 'data', 'tickers_grouped.json'),
+            '/Users/solankianshul/Documents/projects/stock_research/data/tickers_grouped.json'
+        ]
+        
+        config_file = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                config_file = path
+                break
+                
+        if not config_file:
+            return {'success': False, 'error': 'Configuration file tickers_grouped.json not found.'}
+            
+        with open(config_file, 'r') as f:
+            configs = json.load(f)
+        
+        # Select "Sector" Configuration
+        selected_config = "Sector" 
+        
+        if selected_config not in configs:
+            return {'success': False, 'error': f"Configuration '{selected_config}' not found in {config_file}"}
+            
+        config = configs[selected_config]
+        index_symbol = config['index_symbol']
+        stocks = config['stocks']
+
+        # Run Analysis
+        results, data = perform_rs_analysis(index_symbol, stocks, include_technical=True)
+        
+        # Generate Plot
+        fig = plot_rs_trends(data, index_symbol, stocks, show_plot=show_plot)
+        
+        return {
+            'success': True,
+            'results': results,
+            'figure': fig
+        }
+        
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
 
 if __name__ == "__main__":
-    # Load configurations from JSON file
-    config_file = os.path.join(os.path.dirname(__file__), 'data', 'tickers_grouped.json')
+    import os
+    import json
     
+    # Load configurations from JSON file
+    config_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'tickers_grouped.json')
+    
+    if not os.path.exists(config_file):
+        # Try local path
+        config_file = os.path.join(os.path.dirname(__file__), 'data', 'tickers_grouped.json')
+        
     if not os.path.exists(config_file):
         print(f"Error: Configuration file {config_file} not found.")
         exit(1)
@@ -376,8 +448,7 @@ if __name__ == "__main__":
         configs = json.load(f)
     
     # Select Configuration to run
-    # You can change this to "Sector" or "FMCG"
-    selected_config = "IT" 
+    selected_config = "Sector" 
     
     if selected_config not in configs:
         print(f"Error: Configuration '{selected_config}' not found in {config_file}")
@@ -399,10 +470,6 @@ if __name__ == "__main__":
         display_cols = [c for c in display_cols if c in results.columns]
         
         print(results[display_cols])
-        
-        # Save to Excel
-        #results.to_excel("rs_analysis_results.xlsx")
-        #print("\nResults saved to rs_analysis_results.xlsx")
         
         # Plot Trends
         print("\nPlotting RS Trends...")
