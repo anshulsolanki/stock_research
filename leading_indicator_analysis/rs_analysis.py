@@ -299,21 +299,19 @@ def fetch_data(ticker, config=None):
     
     end_date = datetime.now()
     
-    # Adjust lookback calculation based on interval to ensure sufficient data points
+    # Adjust lookback based on interval
     if interval in ['1wk', '1w']:
-        # For weekly data, need 7x more calendar days to get same number of data points
-        # Add extra buffer (1.5x) for weekends/holidays
-        start_date = end_date - timedelta(days=int(lookback * 7 * 1.5))
+        # For weekly data, need more calendar days
+        start_date = end_date - timedelta(days=lookback * 7)
     elif interval in ['1mo', '1M']:
-        # For monthly data, need 30x more calendar days
-        start_date = end_date - timedelta(days=int(lookback * 30 * 1.5))
+        # For monthly data, need even more calendar days
+        start_date = end_date - timedelta(days=lookback * 30)
     elif 'm' in interval or 'h' in interval:
-        # For intraday intervals (15m, 1h, etc.), use a fixed period of days
-        # Intraday data is typically limited to 60 days max by yfinance
-        start_date = end_date - timedelta(days=min(60, int(lookback * 1.5)))
+        # For intraday intervals, limit to 59 days (Yahoo Finance restriction)
+        start_date = end_date - timedelta(days=min(59, lookback))
     else:
-        # For daily intervals ('1d'), use lookback with buffer for weekends/holidays
-        start_date = end_date - timedelta(days=int(lookback * 1.5))
+        # Daily interval
+        start_date = end_date - timedelta(days=lookback)
     
     # Fetch data using yfinance
     data = yf.download(ticker, start=start_date, end=end_date, interval=interval, progress=False)

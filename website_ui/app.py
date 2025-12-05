@@ -24,6 +24,7 @@ from volatility_squeeze_analysis import run_analysis as run_volatility_squeeze_a
 from rs_analysis import run_analysis as run_rs_analysis
 from sector_analysis import run_analysis as run_sector_analysis
 from stock_in_sector_analysis import run_analysis as run_stock_in_sector_analysis
+from batch_analysis import run_batch_analysis
 
 app = Flask(__name__)
 
@@ -38,7 +39,7 @@ def market_analysis():
     return render_template('market_analysis.html')
 
 @app.route('/batch')
-def batch_analysis():
+def batch_analysis_page():
     """Serve the batch analysis page"""
     return render_template('batch_analysis.html')
 
@@ -560,6 +561,14 @@ def get_sectors():
                     'index_symbol': sector_data['index_symbol']
                 })
         
+        # Check for optional batch analysis file
+        batch_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'tickers_batch_analysis.json')
+        if os.path.exists(batch_file):
+            sectors.append({
+                'name': 'Custom Batch List',
+                'index_symbol': '^NSEI' # Default fallback
+            })
+        
         return jsonify({'success': True, 'sectors': sectors})
         
     except Exception as e:
@@ -666,6 +675,45 @@ def get_stocks_in_sector_analysis():
             'data': table_data,
             'sector_name': results['sector_name'],
             'sector_index': results['sector_index']
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/batch_analysis', methods=['POST'])
+def get_batch_analysis():
+    """Run Batch Analysis using tickers_batch_analysis.json"""
+    try:
+        # Get request data
+        data = request.get_json() or {}
+        interval = data.get('interval', '1d')  # Default to daily
+        
+        # Always use the dedicated batch file
+        batch_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'tickers_batch_analysis.json')
+        
+        if not os.path.exists(batch_file):
+             return jsonify({'success': False, 'error': 'tickers_batch_analysis.json not found'})
+             
+        import json
+        with open(batch_file, 'r') as f:
+            batch_data = json.load(f)
+            tickers = list(batch_data.values())
+            
+        if not tickers:
+            return jsonify({'success': False, 'error': 'No tickers found in batch file'})
+            
+        # Limit batch size to prevent timeout/overload
+        MAX_BATCH = 50
+        if len(tickers) > MAX_BATCH:
+            tickers = tickers[:MAX_BATCH]
+            
+        # Run batch analysis with interval parameter
+        results = run_batch_analysis(tickers, interval=interval)
+        
+        return jsonify({
+            'success': True,
+            'data': results,
+            'interval': interval
         })
         
     except Exception as e:

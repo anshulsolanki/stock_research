@@ -1,18 +1,150 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="dashboard-header">
-    <div class="stock-info">
-        <h1>Batch Analysis</h1>
-        <span class="subtitle">Analyze multiple stocks simultaneously</span>
+<div class="content-container">
+    <div class="header-section">
+        <h1 class="page-title">Batch Stock Analysis</h1>
+        <div class="header-controls">
+            <span id="lastUpdated" class="last-updated"></span>
+        </div>
+    </div>
+
+    <!-- Control Panel - Simplified -->
+    <div class="config-panel">
+        <div class="config-info">
+            <p style="margin: 0; color: var(--text-secondary);">
+                <i class="fas fa-chart-line" style="margin-right: 8px;"></i>
+                Analyzing stocks from <strong>tickers_batch_analysis.json</strong>
+            </p>
+        </div>
+        <div class="config-selectors">
+            <div class="form-group" style="margin: 0;">
+                <label for="intervalSelect"
+                    style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 4px; display: block;">Timeframe</label>
+                <select id="intervalSelect" class="form-control" style="min-width: 120px;">
+                    <option value="1d" selected>Daily</option>
+                    <option value="1wk">Weekly</option>
+                    <option value="1mo">Monthly</option>
+                    <option value="15m">15 Minutes</option>
+                </select>
+            </div>
+        </div>
+        <div class="analysis-controls">
+            <button class="action-btn" onclick="runBatchAnalysis(true)">
+                <i class="fas fa-sync-alt"></i> Refresh Analysis
+            </button>
+            <button class="action-btn" onclick="exportBatchCSV()" style="margin-left: 10px;">
+                <i class="fas fa-download"></i> Export CSV
+            </button>
+        </div>
+    </div>
+    <div id="batchProgress" class="progress-info" style="display: none; margin-bottom: 20px;">
+        <i class="fas fa-spinner fa-spin"></i> Processing batch... This may take 10-30 seconds.
+    </div>
+
+    <!-- Results Table -->
+    <div class="analysis-card full-width">
+        <div class="card-header">
+            <h3>Analysis Results</h3>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-container">
+                <table class="data-table" id="batchTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable(0)">Ticker <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable(1)">Price <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable(2)">Trend <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable(3)">Signal <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable(4)">RSI <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable(5)">Divergence <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable(6)">Squeeze <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable(7)">RS (0-10) <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable(8)">Score <i class="fas fa-sort"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody id="batchTableBody">
+                        <tr>
+                            <td colspan="9" class="text-center">Initializing analysis...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="content-wrapper">
-    <div class="placeholder-state">
-        <i class="fas fa-layer-group"></i>
-        <h3>Batch Analysis Coming Soon</h3>
-        <p>This feature will allow you to run analysis on multiple stocks at once and compare results.</p>
-    </div>
-</div>
+<style>
+    /* Batch Specific Styles */
+    .config-panel {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        margin-bottom: 24px;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .config-info {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .config-selectors {
+        display: flex;
+        gap: 15px;
+        align-items: flex-end;
+    }
+
+    .analysis-controls {
+        display: flex;
+        gap: 10px;
+    }
+
+    .full-width {
+        width: 100%;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .score-badge {
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.9em;
+    }
+
+    .score-high {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10B981;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .score-med {
+        background: rgba(245, 158, 11, 0.2);
+        color: #F59E0B;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .score-low {
+        background: rgba(239, 68, 68, 0.2);
+        color: #EF4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .signal-tag {
+        display: inline-block;
+        font-size: 0.8em;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-right: 4px;
+        border: 1px solid var(--border-color);
+    }
+</style>
 {% endblock %}

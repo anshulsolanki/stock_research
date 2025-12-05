@@ -138,6 +138,10 @@ def fetch_data(ticker, interval, lookback_periods):
     """
     Fetches historical data for the given ticker.
     """
+    # Limit lookback for 15m interval (Yahoo Finance restriction: max 60 days)
+    if interval == '15m':
+        lookback_periods = min(lookback_periods, 59)
+    
     end_date = datetime.now()
     # Assuming lookback_periods represents days for now, as yfinance works with dates
     # If interval is intraday, we might need to adjust logic, but keeping it simple as per request

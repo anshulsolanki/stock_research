@@ -147,11 +147,15 @@ def fetch_data(ticker, config=None):
     """
     Fetches historical data using config parameters.
     """
-    # Use provided config or default to global BOLLINGER_CONFIG
+    # Use provided config or default to global CROSSOVER_CONFIG
     cfg = config if config else BOLLINGER_CONFIG
     
     interval = cfg.get('INTERVAL', BOLLINGER_CONFIG['INTERVAL'])
     lookback_periods = cfg.get('LOOKBACK_PERIODS', BOLLINGER_CONFIG['LOOKBACK_PERIODS'])
+    
+    # Limit lookback for 15m interval (Yahoo Finance restriction: max 60 days)
+    if interval == '15m':
+        lookback_periods = min(lookback_periods, 59)
     
     end_date = datetime.now()
     start_date = end_date - timedelta(days=lookback_periods)

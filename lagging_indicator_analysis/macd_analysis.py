@@ -133,6 +133,10 @@ def fetch_data(ticker, config=None):
     interval = cfg.get('INTERVAL', MACD_CONFIG['INTERVAL'])
     lookback_periods = cfg.get('LOOKBACK_PERIODS', MACD_CONFIG['LOOKBACK_PERIODS'])
     
+    # Limit lookback for 15m interval (Yahoo Finance restriction: max 60 days)
+    if interval == '15m':
+        lookback_periods = min(lookback_periods, 59)
+    
     end_date = datetime.now()
     start_date = end_date - timedelta(days=lookback_periods)
     

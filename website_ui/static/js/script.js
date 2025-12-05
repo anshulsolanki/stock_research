@@ -1,8 +1,38 @@
-// Cache for sector analysis results
+// Cache variables
 let sectorAnalysisCache = null;
-
-// Cache for stocks in sector analysis results (per sector)
 let stocksInSectorCache = {};
+let lastAnalyzedStock = null;
+let batchAnalysisCache = null;
+
+// Initialize caches from localStorage on page load
+function initializeCaches() {
+    try {
+        const savedSectorCache = localStorage.getItem('sectorAnalysisCache');
+        if (savedSectorCache) {
+            sectorAnalysisCache = JSON.parse(savedSectorCache);
+        }
+
+        const savedStocksCache = localStorage.getItem('stocksInSectorCache');
+        if (savedStocksCache) {
+            stocksInSectorCache = JSON.parse(savedStocksCache);
+        }
+
+        const savedLastStock = localStorage.getItem('lastAnalyzedStock');
+        if (savedLastStock) {
+            lastAnalyzedStock = JSON.parse(savedLastStock);
+        }
+
+        const savedBatchCache = localStorage.getItem('batchAnalysisCache');
+        if (savedBatchCache) {
+            batchAnalysisCache = JSON.parse(savedBatchCache);
+        }
+    } catch (error) {
+        console.error('Error loading caches from localStorage:', error);
+    }
+}
+
+// Call initialization immediately
+initializeCaches();
 
 // Tab Switching Logic
 function switchMainTab(tabName) {
@@ -226,6 +256,20 @@ async function analyzeStock(analysisType = 'all') {
 
         if (data.success) {
             displayResults(data, analysisType);
+
+            // Save last analyzed stock to localStorage
+            try {
+                const stockData = {
+                    ticker: ticker,
+                    data: data,
+                    analysisType: analysisType,
+                    timestamp: new Date().toISOString()
+                };
+                lastAnalyzedStock = stockData;
+                localStorage.setItem('lastAnalyzedStock', JSON.stringify(stockData));
+            } catch (error) {
+                console.error('Error saving last stock to localStorage:', error);
+            }
         } else {
             showError(data.error || 'Analysis failed');
         }
@@ -679,6 +723,48 @@ function initApp() {
     if (sectorSection && sectorSection.classList.contains('active')) {
         loadSectorAnalysis();
     }
+
+    // Restore last analyzed stock on Dashboard
+    if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
+        restoreLastAnalyzedStock();
+    }
+
+    // Auto-run batch analysis on Batch Analysis page
+    if (window.location.pathname === '/batch_analysis' || window.location.pathname === '/batch' || window.location.pathname.includes('batch')) {
+        // Only run if no cache exists
+        if (!batchAnalysisCache) {
+            runBatchAnalysis();
+        } else {
+            // Restore from cache
+            console.log('Restoring batch analysis from cache');
+            renderBatchTable(batchAnalysisCache);
+            const updatedEl = document.getElementById('lastUpdated');
+            if (updatedEl) updatedEl.textContent = 'Last Updated: ' + new Date().toLocaleString();
+        }
+    }
+}
+
+// Restore last analyzed stock from cache
+function restoreLastAnalyzedStock() {
+    if (lastAnalyzedStock && lastAnalyzedStock.data) {
+        console.log('Restoring last analyzed stock:', lastAnalyzedStock.ticker);
+
+        // Set the ticker input
+        const tickerInput = document.getElementById('tickerInput');
+        if (tickerInput) {
+            tickerInput.value = lastAnalyzedStock.ticker;
+        }
+
+        // Display the results
+        displayResults(lastAnalyzedStock.data, lastAnalyzedStock.analysisType);
+
+        // Update timestamp
+        const timestampEl = document.getElementById('timestamp');
+        if (timestampEl && lastAnalyzedStock.timestamp) {
+            const date = new Date(lastAnalyzedStock.timestamp);
+            timestampEl.textContent = 'Last Updated: ' + date.toLocaleString();
+        }
+    }
 }
 
 // Check if DOM is already loaded
@@ -804,6 +890,13 @@ async function loadSectorAnalysis(forceRefresh = false) {
         if (data.success) {
             // Cache the results
             sectorAnalysisCache = data;
+
+            // Save to localStorage
+            try {
+                localStorage.setItem('sectorAnalysisCache', JSON.stringify(data));
+            } catch (error) {
+                console.error('Error saving sector cache to localStorage:', error);
+            }
 
             // Display the data
             displaySectorAnalysis(data);
@@ -931,6 +1024,13 @@ async function analyzeStocksInSector(forceRefresh = false) {
             // Cache the results for this sector
             stocksInSectorCache[sectorName] = data;
 
+            // Save to localStorage
+            try {
+                localStorage.setItem('stocksInSectorCache', JSON.stringify(stocksInSectorCache));
+            } catch (error) {
+                console.error('Error saving stocks cache to localStorage:', error);
+            }
+
             // Display the data
             displayStocksInSector(data);
         } else {
@@ -990,4 +1090,234 @@ function displayStocksInSector(data) {
     }
 
     if (contentEl) contentEl.style.display = 'block';
+}
+
+// ========== Batch Analysis Logic ==========
+
+let batchResultsCache = [];
+
+async function runBatchAnalysis(forceRefresh = false) {
+    // Read interval from selector
+    const intervalSelect = document.getElementById('intervalSelect');
+    const selectedInterval = intervalSelect ? intervalSelect.value : '1d';
+
+    // Check if interval changed - if so, invalidate cache
+    const cachedInterval = localStorage.getItem('batchAnalysisInterval');
+    if (cachedInterval && cachedInterval !== selectedInterval) {
+        console.log(`Interval changed from ${cachedInterval} to ${selectedInterval}, clearing cache`);
+        batchAnalysisCache = null;
+        localStorage.removeItem('batchAnalysisCache');
+    }
+
+    // Store current interval
+    localStorage.setItem('batchAnalysisInterval', selectedInterval);
+
+    // Check cache first
+    if (batchAnalysisCache && !forceRefresh) {
+        console.log('Using cached batch analysis data');
+        renderBatchTable(batchAnalysisCache);
+        const updatedEl = document.getElementById('lastUpdated');
+        if (updatedEl) updatedEl.textContent = `Last Updated: ${new Date().toLocaleString()} (${selectedInterval})`;
+        return;
+    }
+
+    // Simplified: No sector selection needed
+    const progressEl = document.getElementById('batchProgress');
+    const tableBody = document.getElementById('batchTableBody');
+    const runBtn = document.querySelector('.action-btn');
+
+    if (progressEl) progressEl.style.display = 'block';
+    if (runBtn) runBtn.disabled = true;
+    if (tableBody) tableBody.innerHTML = '<tr><td colspan="9" class="text-center"><i class="fas fa-spinner fa-spin"></i> Processing batch... This may take 10-30 seconds.</td></tr>';
+
+    try {
+        const response = await fetch('/api/batch_analysis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ interval: selectedInterval })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            batchResultsCache = data.data;
+            batchAnalysisCache = data.data; // Cache for persistence
+
+            // Save to localStorage
+            try {
+                localStorage.setItem('batchAnalysisCache', JSON.stringify(data.data));
+            } catch (error) {
+                console.error('Error saving batch cache to localStorage:', error);
+            }
+
+            renderBatchTable(batchResultsCache);
+
+            // Update last updated with interval info
+            const updatedEl = document.getElementById('lastUpdated');
+            if (updatedEl) updatedEl.textContent = `Last Updated: ${new Date().toLocaleString()} (${data.interval || selectedInterval})`;
+        } else {
+            console.error('Batch analysis failed:', data.error);
+            if (tableBody) tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger">Error: ${data.error}</td></tr>`;
+        }
+    } catch (error) {
+        console.error('Error running batch analysis:', error);
+        if (tableBody) tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger">Network Error</td></tr>`;
+    } finally {
+        if (progressEl) progressEl.style.display = 'none';
+        if (runBtn) runBtn.disabled = false;
+    }
+}
+
+function renderBatchTable(data) {
+    const tableBody = document.getElementById('batchTableBody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '';
+
+    if (!data || data.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="9" class="text-center">No results found.</td></tr>';
+        return;
+    }
+
+    data.forEach(item => {
+        if (!item.success) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="fw-bold">${item.ticker}</td>
+                <td colspan="8" class="text-danger">Error: ${item.error || 'Analysis failed'}</td>
+            `;
+            tableBody.appendChild(tr);
+            return;
+        }
+
+        const tr = document.createElement('tr');
+        const columns = item.columns;
+        const score = item.score;
+
+        // Determine score class based on strategy interpretation
+        let scoreClass = 'score-low';
+        if (score >= 80) scoreClass = 'score-high';      // Strong Buy
+        else if (score >= 60) scoreClass = 'score-med';  // Buy/Accumulate
+        else if (score >= 40) scoreClass = 'score-low';  // Hold/Neutral
+        else scoreClass = 'score-low';                   // Avoid/Sell
+
+        // Format Trend Direction with details
+        let trendHtml = columns.trend_direction;
+        if (columns.trend_direction_detail) {
+            trendHtml += `<br><small class="text-muted">MACD: ${columns.trend_direction_detail.macd}</small>`;
+            trendHtml += `<br><small class="text-muted">ST: ${columns.trend_direction_detail.supertrend}</small>`;
+        }
+
+        // Format Trend Signal with details
+        let signalHtml = columns.trend_signal;
+        if (columns.trend_signal_detail) {
+            signalHtml += `<br><small class="text-muted">Cross: ${columns.trend_signal_detail.crossover}</small>`;
+            signalHtml += `<br><small class="text-muted">ST: ${columns.trend_signal_detail.supertrend}</small>`;
+        }
+
+        // Format RSI with value and state
+        let rsiHtml = `<strong>${columns.rsi_value}</strong>`;
+        rsiHtml += `<br><small>${columns.rsi_state}</small>`;
+
+        // Format Divergence with date
+        let divHtml = columns.divergence;
+        if (columns.divergence_date && columns.divergence !== '➖ None') {
+            const divDate = new Date(columns.divergence_date);
+            divHtml += `<br><small class="text-muted">${divDate.toLocaleDateString()}</small>`;
+        }
+
+        // Format RS Score with classification
+        let rsHtml = `<strong>${columns.rs_score}</strong>`;
+        if (columns.rs_classification) {
+            rsHtml += `<br><small class="text-muted">${columns.rs_classification}</small>`;
+        }
+
+        tr.innerHTML = `
+            <td class="fw-bold">${item.ticker}</td>
+            <td>₹${item.price ? item.price.toFixed(2) : '-'}</td>
+            <td>${trendHtml}</td>
+            <td>${signalHtml}</td>
+            <td>${rsiHtml}</td>
+            <td>${divHtml}</td>
+            <td>${columns.squeeze}</td>
+            <td>${rsHtml}</td>
+            <td><span class="score-badge ${scoreClass}">${score}</span></td>
+        `;
+
+        tableBody.appendChild(tr);
+    });
+}
+
+function exportBatchCSV() {
+    if (!batchResultsCache || batchResultsCache.length === 0) {
+        alert('No data to export');
+        return;
+    }
+
+    const headers = ['Ticker', 'Price', 'Trend', 'Momentum', 'RSI', 'RS_Score', 'Score'];
+    const rows = batchResultsCache.map(d => [
+        d.ticker,
+        d.price,
+        d.metrics.trend,
+        d.metrics.momentum,
+        d.metrics.rsi,
+        d.metrics.rs_score,
+        d.score
+    ]);
+
+    let csvContent = "data:text/csv;charset=utf-8,"
+        + headers.join(",") + "\n"
+        + rows.map(e => e.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "batch_analysis_results.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function sortTable(n) {
+    const table = document.getElementById("batchTable");
+    let rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+    switching = true;
+    dir = "asc";
+
+    while (switching) {
+        switching = false;
+        rows = table.rows;
+
+        for (i = 1; i < (rows.length - 1); i++) {
+            shouldSwitch = false;
+            x = rows[i].getElementsByTagName("TD")[n];
+            y = rows[i + 1].getElementsByTagName("TD")[n];
+
+            let xVal = x.textContent || x.innerText;
+            let yVal = y.textContent || y.innerText;
+
+            // Numeric sort for Price (1), RSI (3), RS (5), Score (6)
+            if ([1, 3, 5, 6].includes(n)) {
+                xVal = parseFloat(xVal) || 0;
+                yVal = parseFloat(yVal) || 0;
+            }
+
+            if (dir == "asc") {
+                if (xVal > yVal) { shouldSwitch = true; break; }
+            } else if (dir == "desc") {
+                if (xVal < yVal) { shouldSwitch = true; break; }
+            }
+        }
+
+        if (shouldSwitch) {
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+            switchcount++;
+        } else {
+            if (switchcount == 0 && dir == "asc") {
+                dir = "desc";
+                switching = true;
+            }
+        }
+    }
 }
