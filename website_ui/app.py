@@ -12,6 +12,7 @@ import numpy as np
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lagging_indicator_analysis'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'leading_indicator_analysis'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'market_analysis'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'fundamental_analysis'))
 
 from macd_analysis import run_analysis as run_macd_analysis
 from supertrend_analysis import run_analysis as run_supertrend_analysis
@@ -25,6 +26,7 @@ from rs_analysis import run_analysis as run_rs_analysis
 from sector_analysis import run_analysis as run_sector_analysis
 from stock_in_sector_analysis import run_analysis as run_stock_in_sector_analysis
 from batch_analysis import run_batch_analysis
+from fundamental_analysis import run_analysis as run_fundamental_analysis
 
 app = Flask(__name__)
 
@@ -678,6 +680,62 @@ def get_stocks_in_sector_analysis():
         })
         
     except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/fundamental-analysis', methods=['POST'])
+def get_fundamental_analysis():
+    """Run fundamental analysis on a stock ticker"""
+    
+    def convert_to_json_serializable(obj):
+        """Convert numpy/pandas types to native Python types for JSON serialization"""
+        if isinstance(obj, dict):
+            return {key: convert_to_json_serializable(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_to_json_serializable(item) for item in obj]
+        elif isinstance(obj, (np.bool_, np.bool)):
+            return bool(obj)
+        elif isinstance(obj, (np.integer, np.int64, np.int32)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, np.float64, np.float32)):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif hasattr(obj, 'item'):  # Handle numpy scalar types
+            return obj.item()
+        elif obj is None:
+            return None
+        else:
+            return obj
+    
+    try:
+        data = request.get_json()
+        ticker = data.get('ticker', '').strip().upper()
+        
+        if not ticker:
+            return jsonify({'success': False, 'error': 'Please enter a valid ticker symbol'})
+        
+        print(f"Starting fundamental analysis for {ticker}...")
+        results = run_fundamental_analysis(ticker)
+        print(f"Fundamental analysis result: {results['success']}")
+        
+        if not results['success']:
+            return jsonify(results)
+        
+        # Convert all numpy/pandas types to native Python types
+        formatted_response = convert_to_json_serializable({
+            'success': True,
+            'ticker': results['ticker'],
+            'analysis_date': results['analysis_date'],
+            'long_term': results['long_term'],
+            'short_term': results['short_term']
+        })
+        
+        return jsonify(formatted_response)
+        
+    except Exception as e:
+        import traceback
+        print(f"Error in fundamental analysis: {str(e)}")
+        print(traceback.format_exc())
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/batch_analysis', methods=['POST'])

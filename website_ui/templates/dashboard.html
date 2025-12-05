@@ -22,6 +22,7 @@
         <div class="main-tabs">
             <button class="main-tab-btn active" onclick="switchMainTab('leading')">Leading Indicators</button>
             <button class="main-tab-btn" onclick="switchMainTab('lagging')">Lagging Indicators</button>
+            <button class="main-tab-btn" onclick="switchMainTab('fundamentals')">Fundamentals</button>
             <button class="main-tab-btn" onclick="switchMainTab('custom')">Custom Strategy</button>
         </div>
     </div>
@@ -90,6 +91,134 @@
         <!-- Donchian Tab -->
         <div id="donchian-tab" class="analysis-panel">
             {% include 'partials/donchian_panel.html' %}
+        </div>
+    </div>
+
+    <!-- Fundamentals Section -->
+    <div id="fundamentals-section" class="section-content">
+        <div class="analysis-panel active">
+            <h2>Fundamental Analysis</h2>
+            <p class="section-description">Financial health and growth metrics for long-term and short-term perspectives
+            </p>
+
+            <div id="fundamentals-loading" style="display: none; text-align: center; padding: 40px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #4CAF50;"></i>
+                <p style="margin-top: 20px;">Analyzing fundamentals...</p>
+            </div>
+
+            <div id="fundamentals-results" style="display: none;">
+                <!-- Long-term Analysis (5Y) -->
+                <div class="fundamentals-section">
+                    <h3><i class="fas fa-chart-line"></i> Long-term Analysis (4 Years)</h3>
+                    <table class="fundamentals-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Is Growing?</th>
+                                <th>Accelerating?</th>
+                                <th>1Y Growth</th>
+                                <th>3Y CAGR</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr id="revenue-5y-row">
+                                <td><strong>Revenue</strong></td>
+                                <td id="revenue-5y-growing" class="indicator-cell"></td>
+                                <td id="revenue-5y-accelerating" class="indicator-cell"></td>
+                                <td id="revenue-5y-1y"></td>
+                                <td id="revenue-5y-3y"></td>
+                                <td id="revenue-5y-status" class="status-cell"></td>
+                            </tr>
+                            <tr id="profit-5y-row">
+                                <td><strong>Net Income</strong></td>
+                                <td id="profit-5y-growing" class="indicator-cell"></td>
+                                <td id="profit-5y-accelerating" class="indicator-cell"></td>
+                                <td id="profit-5y-1y"></td>
+                                <td id="profit-5y-3y"></td>
+                                <td id="profit-5y-status" class="status-cell"></td>
+                            </tr>
+                            <tr id="roe-5y-row">
+                                <td><strong>ROE</strong></td>
+                                <td id="roe-5y-growing" class="indicator-cell"></td>
+                                <td id="roe-5y-accelerating" class="indicator-cell"></td>
+                                <td id="roe-5y-1y"></td>
+                                <td id="roe-5y-3y"></td>
+                                <td id="roe-5y-status" class="status-cell"></td>
+                            </tr>
+                            <tr id="eps-5y-row">
+                                <td><strong>EPS</strong></td>
+                                <td id="eps-5y-growing" class="indicator-cell"></td>
+                                <td id="eps-5y-accelerating" class="indicator-cell"></td>
+                                <td id="eps-5y-1y"></td>
+                                <td id="eps-5y-3y"></td>
+                                <td id="eps-5y-status" class="status-cell"></td>
+                            </tr>
+                            <tr id="pe-row">
+                                <td><strong>PE Ratio</strong></td>
+                                <td id="pe-value" colspan="2"></td>
+                                <td id="pe-industry" colspan="2"></td>
+                                <td id="pe-vs-industry" colspan="2" class="status-cell"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Short-term Analysis (6Q) -->
+                <div class="fundamentals-section" style="margin-top: 30px;">
+                    <h3><i class="fas fa-calendar-alt"></i> Short-term Analysis (6 Quarters)</h3>
+                    <table class="fundamentals-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Is Growing?</th>
+                                <th>Recent QoQ</th>
+                                <th>Avg QoQ Growth</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr id="revenue-6q-row">
+                                <td><strong>Revenue</strong></td>
+                                <td id="revenue-6q-growing" class="indicator-cell"></td>
+                                <td id="revenue-6q-recent"></td>
+                                <td id="revenue-6q-avg"></td>
+                                <td id="revenue-6q-status" class="status-cell"></td>
+                            </tr>
+                            <tr id="profit-6q-row">
+                                <td><strong>Net Income</strong></td>
+                                <td id="profit-6q-growing" class="indicator-cell"></td>
+                                <td id="profit-6q-recent"></td>
+                                <td id="profit-6q-avg"></td>
+                                <td id="profit-6q-status" class="status-cell"></td>
+                            </tr>
+                            <tr id="roe-6q-row">
+                                <td><strong>ROE</strong></td>
+                                <td id="roe-6q-growing" class="indicator-cell"></td>
+                                <td id="roe-6q-recent"></td>
+                                <td id="roe-6q-avg"></td>
+                                <td id="roe-6q-status" class="status-cell"></td>
+                            </tr>
+                            <tr id="eps-6q-row">
+                                <td><strong>EPS</strong></td>
+                                <td id="eps-6q-growing" class="indicator-cell"></td>
+                                <td id="eps-6q-recent"></td>
+                                <td id="eps-6q-avg"></td>
+                                <td id="eps-6q-status" class="status-cell"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="analysis-timestamp" id="fundamentals-timestamp"
+                    style="margin-top: 20px; text-align: right; color: #999; font-size: 0.9em;"></div>
+            </div>
+
+            <div id="fundamentals-error"
+                style="display: none; padding: 20px; background: #ffebee; border-left: 4px solid #f44336; margin: 20px 0;">
+                <h4 style="margin: 0 0 10px 0; color: #c62828;">Error</h4>
+                <p id="fundamentals-error-message" style="margin: 0;"></p>
+            </div>
         </div>
     </div>
 

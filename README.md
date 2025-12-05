@@ -6,28 +6,52 @@ A comprehensive Python-based stock technical analysis toolkit featuring multiple
 
 ## 📊 Overview
 
-This project provides a complete suite of technical analysis tools organized into three main components:
+This project provides a complete suite of technical analysis tools organized into four main components:
 
 1. **Lagging Indicator Analysis** - Trend-following and momentum indicators
-2. **Leading Indicator Analysis** - Divergence-based predictive signals  
-3. **Web Application** - Interactive Flask-based UI for all indicators
+2. **Leading Indicator Analysis** - Divergence-based predictive signals
+3. **Market Analysis** - Sector analysis, batch analysis, and relative strength tools
+4. **Web Interfaces** - Two Flask-based UIs (classic and modern dashboard)
 
-## 🌐 Web Application
+## 🌐 Web Interfaces
 
-**The easiest way to use this project is through the web application!**
+**The easiest way to use this project is through one of the two web interfaces!**
 
-The web app provides an intuitive interface to analyze stocks using all available indicators, with configurable parameters and real-time chart generation.
+### Option 1: Modern Dashboard UI (Recommended)
+
+A sleek, modern interface with sidebar navigation and comprehensive market analysis.
+
+👉 **[View detailed Website UI documentation](./website_ui/README.md)**
+
+**Quick Start:**
+```bash
+cd website_ui
+python app.py
+# Navigate to http://127.0.0.1:5001
+```
+
+**Features:**
+- **Modern dashboard layout**: Sidebar with stock watchlist
+- **Market Analysis**: Sector analysis, stocks in sector, batch analysis
+- **All indicators**: Leading and lagging indicators with RS analysis
+- **Multiple timeframes**: 1d, 1wk, 1mo, 1h, 15m
+- **Real-time charts**: Auto-generated visualizations
+- **Support for global markets**: US stocks, NSE, BSE
+
+### Option 2: Classic Web App
+
+The original tabbed interface with all technical indicators.
 
 👉 **[View detailed Web App documentation](./web_app/README.md)**
 
-### Quick Start
+**Quick Start:**
 ```bash
 cd web_app
 python app.py
 # Navigate to http://127.0.0.1:5000
 ```
 
-### Features
+**Features:**
 - **Two-tier tab interface**: Organized by Lagging/Leading indicators
 - **7 Technical Indicators**: All accessible from one place
 - **Configurable parameters**: Customize each indicator
@@ -93,10 +117,8 @@ Located in `leading_indicator_analysis/`
 - **Signals**: Squeeze detection, breakout anticipation
 - **Use Case**: Low volatility to high volatility transitions
 
-### Other Analysis Tools
-
-#### Relative Strength (RS) Analysis
-- **File**: [`rs_analysis.py`](./rs_analysis.py)
+#### 4. Relative Strength (RS) Analysis
+- **File**: [`rs_analysis.py`](./leading_indicator_analysis/rs_analysis.py)
 - **Type**: Multi-timeframe momentum comparison
 - **Features**:
   - RS calculation across 1M, 2M, 3M, 6M, 1Y, 3Y, 5Y
@@ -104,6 +126,37 @@ Located in `leading_indicator_analysis/`
   - Early turnaround signals
   - Automated ranking system
 - **Use Case**: Compare stocks within sectors, identify relative winners
+
+### Market Analysis Tools
+
+Located in `market_analysis/`
+
+#### 1. Sector Analysis
+- **File**: [`sector_analysis.py`](./market_analysis/sector_analysis.py)
+- **Type**: Sector-wide relative strength analysis
+- **Features**:
+  - Analyze all stocks within a sector
+  - Identify consistent leaders, emerging momentum, and turnarounds
+  - Technical confirmation filters (MA breakout, volume surge)
+  - Composite scoring and ranking
+- **Use Case**: Find the best stocks within a sector
+
+#### 2. Stocks in Sector Analysis
+- **File**: [`stock_in_sector_analysis.py`](./market_analysis/stock_in_sector_analysis.py)
+- **Type**: Individual stock analysis within sector context
+- **Features**:
+  - Compare individual stock to sector index
+  - Relative performance metrics
+- **Use Case**: Evaluate stock performance vs sector benchmark
+
+#### 3. Batch Analysis
+- **File**: [`batch_analysis.py`](./market_analysis/batch_analysis.py)
+- **Type**: Multi-stock analysis engine
+- **Features**:
+  - Analyze multiple stocks simultaneously
+  - Apply technical indicators across watchlists
+  - Generate comparative reports
+- **Use Case**: Screen and compare multiple stocks efficiently
 
 ## 🚀 Installation
 
@@ -134,7 +187,16 @@ pip install -r requirements.txt
 
 ## 💻 Usage
 
-### Option 1: Web Application (Recommended)
+### Option 1: Modern Dashboard UI (Recommended)
+```bash
+cd website_ui
+python app.py
+```
+Then navigate to `http://127.0.0.1:5001` in your browser.
+
+**See [Website UI README](./website_ui/README.md) for detailed usage instructions.**
+
+### Option 2: Classic Web App
 ```bash
 cd web_app
 python app.py
@@ -166,8 +228,17 @@ python leading_indicator_analysis/rsi_divergence_analysis.py
 # RSI-Volume Divergence
 python leading_indicator_analysis/rsi_volume_divergence.py
 
+# Volatility Squeeze
+python leading_indicator_analysis/volatility_squeeze_analysis.py
+
 # Relative Strength Analysis
-python rs_analysis.py
+python leading_indicator_analysis/rs_analysis.py
+
+# Sector Analysis
+python market_analysis/sector_analysis.py
+
+# Batch Analysis
+python market_analysis/batch_analysis.py
 ```
 
 ### Option 3: Import as Module
@@ -201,22 +272,40 @@ stock_research/
 ├── leading_indicator_analysis/        # Predictive indicators
 │   ├── rsi_divergence_analysis.py     # RSI Divergence
 │   ├── rsi_volume_divergence.py       # RSI-Volume Divergence
-│   └── volatility_squeeze_analysis.py # Volatility Squeeze
-├── web_app/                           # Flask web application
+│   ├── volatility_squeeze_analysis.py # Volatility Squeeze
+│   └── rs_analysis.py                 # Relative Strength Analysis
+├── market_analysis/                   # Market-wide analysis tools
+│   ├── sector_analysis.py             # Sector RS analysis
+│   ├── stock_in_sector_analysis.py    # Stock vs sector comparison
+│   └── batch_analysis.py              # Multi-stock batch analysis
+├── web_app/                           # Classic Flask web application
 │   ├── README.md                      # Web app documentation
-│   ├── app.py                         # Flask backend
+│   ├── app.py                         # Flask backend (port 5000)
 │   ├── verify_api.py                  # API testing utility
 │   ├── templates/
 │   │   └── index.html                 # Web UI
 │   └── static/
 │       ├── style.css                  # Styling
 │       └── script.js                  # Frontend logic
+├── website_ui/                        # Modern dashboard web interface
+│   ├── README.md                      # Website UI documentation
+│   ├── app.py                         # Flask backend (port 5001)
+│   ├── templates/
+│   │   ├── base.html                  # Base layout with sidebar
+│   │   ├── dashboard.html             # Main analysis dashboard
+│   │   ├── market_analysis.html       # Market analysis page
+│   │   ├── batch_analysis.html        # Batch analysis page
+│   │   └── partials/                  # Reusable analysis panels
+│   └── static/
+│       ├── style.css                  # Modern styling
+│       └── script.js                  # Dashboard logic
 ├── data/
 │   ├── tickers_list.json              # Stock ticker lists
-│   └── tickers_batch.json             # Batch configurations
+│   ├── tickers_grouped.json           # Sector-grouped tickers
+│   ├── tickers_batch_analysis.json    # Batch analysis configs
+│   └── watchlist.json                 # User watchlist
 ├── docs/
 │   └── todo.txt                       # Project roadmap
-├── rs_analysis.py                     # Relative Strength analysis
 └── stock_analysis.py                  # Legacy analysis script
 ```
 

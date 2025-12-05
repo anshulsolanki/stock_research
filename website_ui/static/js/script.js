@@ -58,6 +58,14 @@ function switchMainTab(tabName) {
     if (tabName === 'sector_analysis') {
         loadSectorAnalysis(false); // false = don't force refresh, use cache if available
     }
+
+    // Trigger fundamental analysis if switching to fundamentals tab
+    if (tabName === 'fundamentals') {
+        const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+        if (ticker) {
+            analyzeFundamentals(ticker);
+        }
+    }
 }
 
 function switchSubTab(section, tabName) {
@@ -290,6 +298,15 @@ function displayResults(data, analysisType) {
     // Update header
     document.getElementById('selectedTicker').textContent = data.ticker;
     document.getElementById('timestamp').textContent = 'Last Updated: ' + new Date().toLocaleString();
+
+    // Trigger fundamental analysis if fundamentals tab is active
+    const currentSection = document.querySelector('.section-content.active');
+    if (currentSection && currentSection.id === 'fundamentals-section') {
+        const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+        if (ticker) {
+            analyzeFundamentals(ticker);
+        }
+    }
 
     // ========== MACD Data ==========
     if (data.macd && (analysisType === 'all' || analysisType === 'macd')) {

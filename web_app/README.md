@@ -4,7 +4,9 @@ A comprehensive Flask-based web application for analyzing stocks using multiple 
 
 ## 🎯 Overview
 
-This web application provides professional-grade technical analysis for stocks with real-time chart generation, configurable parameters, and an organized multi-tier tab interface that separates lagging and leading indicators.
+This is the **classic tabbed interface** for the Stock Technical Analysis platform. It provides professional-grade technical analysis for stocks with real-time chart generation, configurable parameters, and an organized multi-tier tab interface that separates lagging and leading indicators.
+
+> 💡 **Looking for a modern dashboard?** Check out the [Website UI](../website_ui/README.md) which offers a sleek sidebar-based interface with additional market analysis features (sector analysis, batch analysis). It runs on port 5001.
 
 ## ✨ Features
 
@@ -328,6 +330,7 @@ sys.path.insert(0, '/Users/solankianshul/Documents/projects/stock_research')
 - Check ticker symbol validity
 - Confirm ticker exists in Yahoo Finance
 - For Indian stocks, ensure correct suffix (`.NS` or `.BO`)
+- **Note**: 15-minute interval data is limited to 59 days of history due to Yahoo Finance restrictions
 
 ### Chart Not Displaying
 - Check browser console for errors
@@ -369,7 +372,6 @@ sys.path.insert(0, '/Users/solankianshul/Documents/projects/stock_research')
 - Export analysis reports as PDF
 - Save/load custom configurations
 - Add alerts and notifications
-- Implement volatility squeeze analysis integration
 
 ## 📄 License
 
