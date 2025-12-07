@@ -59,13 +59,7 @@ function switchMainTab(tabName) {
         loadSectorAnalysis(false); // false = don't force refresh, use cache if available
     }
 
-    // Trigger fundamental analysis if switching to fundamentals tab
-    if (tabName === 'fundamentals') {
-        const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
-        if (ticker) {
-            analyzeFundamentals(ticker);
-        }
-    }
+
 }
 
 function switchSubTab(section, tabName) {
@@ -299,14 +293,7 @@ function displayResults(data, analysisType) {
     document.getElementById('selectedTicker').textContent = data.ticker;
     document.getElementById('timestamp').textContent = 'Last Updated: ' + new Date().toLocaleString();
 
-    // Trigger fundamental analysis if fundamentals tab is active
-    const currentSection = document.querySelector('.section-content.active');
-    if (currentSection && currentSection.id === 'fundamentals-section') {
-        const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
-        if (ticker) {
-            analyzeFundamentals(ticker);
-        }
-    }
+
 
     // ========== MACD Data ==========
     if (data.macd && (analysisType === 'all' || analysisType === 'macd')) {
@@ -774,6 +761,11 @@ function restoreLastAnalyzedStock() {
 
         // Display the results
         displayResults(lastAnalyzedStock.data, lastAnalyzedStock.analysisType);
+
+        // Restore fundamental analysis if available in cache for this ticker
+        if (typeof fundamentalsCache !== 'undefined' && fundamentalsCache[lastAnalyzedStock.ticker]) {
+            displayFundamentalResults(fundamentalsCache[lastAnalyzedStock.ticker]);
+        }
 
         // Update timestamp
         const timestampEl = document.getElementById('timestamp');

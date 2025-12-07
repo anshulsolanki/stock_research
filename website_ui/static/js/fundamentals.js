@@ -4,14 +4,29 @@
  */
 
 // Cache for fundamental analysis results
-const fundamentalsCache = {};
+let fundamentalsCache = {};
+
+// Load cache from localStorage
+function loadFundamentalsCache() {
+    try {
+        const savedCache = localStorage.getItem('fundamentalsCache');
+        if (savedCache) {
+            fundamentalsCache = JSON.parse(savedCache);
+        }
+    } catch (e) {
+        console.error('Error loading fundamentals cache:', e);
+    }
+}
+
+// Initialize cache
+loadFundamentalsCache();
 
 /**
  * Analyze fundamentals for a ticker
  */
-async function analyzeFundamentals(ticker) {
+async function analyzeFundamentals(ticker, forceRefresh = false) {
     // Check cache first
-    if (fundamentalsCache[ticker]) {
+    if (!forceRefresh && fundamentalsCache[ticker]) {
         console.log(`Using cached fundamentals for ${ticker}`);
         displayFundamentalResults(fundamentalsCache[ticker]);
         return;
@@ -34,6 +49,11 @@ async function analyzeFundamentals(ticker) {
         if (data.success) {
             // Cache the results
             fundamentalsCache[ticker] = data;
+            try {
+                localStorage.setItem('fundamentalsCache', JSON.stringify(fundamentalsCache));
+            } catch (e) {
+                console.error('Error saving fundamentals cache:', e);
+            }
             displayFundamentalResults(data);
         } else {
             showFundamentalsError(data.error || 'Analysis failed');
@@ -235,4 +255,16 @@ function showFundamentalsError(message) {
     document.getElementById('fundamentals-error').style.display = 'block';
     document.getElementById('fundamentals-results').style.display = 'none';
     document.getElementById('fundamentals-error-message').textContent = message;
+}
+
+/**
+ * Manually refresh fundamental analysis
+ */
+function refreshFundamentals() {
+    const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+    if (ticker) {
+        analyzeFundamentals(ticker, true);
+    } else {
+        showError('Please enter a ticker symbol');
+    }
 }

@@ -164,7 +164,7 @@ def check_growth_trend(growth_rates):
 
 
 # ============================================================================
-# LONG-TERM ANALYSIS FUNCTIONS (5 YEARS)
+# LONG-TERM ANALYSIS FUNCTIONS (4 YEARS)
 # ============================================================================
 
 def analyze_revenue_growth_4y(ticker):
@@ -1069,7 +1069,7 @@ def analyze_batch(tickers_list):
 
 if __name__ == "__main__":
     # Test all functions with a sample ticker
-    ticker = "DABUR.NS"
+    ticker = "BRITANNIA.NS"
     
     print("="*80)
     print(f"FUNDAMENTAL ANALYSIS FOR {ticker}")
