@@ -118,7 +118,7 @@ MACD_CONFIG = {
     'LOOKBACK_PERIODS': 730,  # 2 year
     
     # Execution Control
-    'DEFAULT_TICKER': 'DABUR.NS',
+    'DEFAULT_TICKER': 'HDFCBANK.NS',
     'BATCH_RELATIVE_PATH': '../data/tickers_list.json',
     'RUN_BATCH': False
 }

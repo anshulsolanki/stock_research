@@ -92,7 +92,10 @@ def render_styled_table_page(pdf, df, title, col_formats=None):
         col_formats: Dict mapping column names to style types:
             - 'score': Blue background, white text
             - 'bool': Green check for True, ' - ' for False
-            - 'float': Round to 3 decimals
+            - 'float': Round to 2 decimals
+            - 'rs': Red/Green text based on value > 0
+            - 'trend': Color coded text for trend (Uptrend=Green, Downtrend=Red)
+            - 'signal': Color coded text for signal (Buy=Green, Sell=Red)
     """
     if df.empty:
         return
@@ -114,16 +117,33 @@ def render_styled_table_page(pdf, df, title, col_formats=None):
             
         # Pre-process data for display (icons, rounding)
         display_chunk = chunk.copy()
+        
+        # Helper to replace unsupported emojis with supported shapes
+        def replace_icons(val):
+            if isinstance(val, str):
+                # Replace common emojis with supported geometric shapes
+                # Circles: 🟢 🔴 🟡 -> ● (U+25CF)
+                val = val.replace('🟢', '●').replace('🔴', '●').replace('🟡', '●') 
+                # Arrows: ⬆️ -> ▲, ⬇️ -> ▼
+                val = val.replace('⬆️', '▲').replace('⬇️', '▼')
+                # Others
+                val = val.replace('➖', '-').replace('⚠️', '!').replace('💥', '*')
+                return val.strip()
+            return val
+
         for col in chunk.columns:
+            # First apply icon replacement to all
+            display_chunk[col] = display_chunk[col].apply(replace_icons)
+
             fmt = col_formats.get(col)
             if fmt == 'bool':
                 # Replace with symbols
                 display_chunk[col] = chunk[col].apply(lambda x: '✔' if x else '-')
-            elif fmt == 'float':
-                display_chunk[col] = chunk[col].apply(lambda x: f"{x:.3f}" if isinstance(x, (int, float)) else x)
+            elif fmt == 'float' or fmt == 'rs':
+                display_chunk[col] = chunk[col].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x)
             elif fmt == 'score':
                 # Round score
-                display_chunk[col] = chunk[col].apply(lambda x: f"{x:.3f}" if isinstance(x, (int, float)) else x)
+                display_chunk[col] = chunk[col].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x)
 
         fig, ax = plt.subplots(figsize=(11, 8.5))
         ax.axis('tight')
@@ -155,21 +175,48 @@ def render_styled_table_page(pdf, df, title, col_formats=None):
                 # Column specific styling
                 col_name = display_chunk.columns[col]
                 fmt = col_formats.get(col_name)
-                val = chunk.iloc[row-1][col_name] # Original value
+                val = chunk.iloc[row-1][col_name] # Original value for logic
                 
                 if fmt == 'score':
                      cell.set_facecolor('#2563eb') # Blue
                      cell.set_text_props(color='white', weight='bold')
+                
                 elif fmt == 'bool':
                     if val: # True -> Green check
                          cell.set_text_props(color='#16a34a', weight='bold') # Green
                     else:
                          cell.set_text_props(color='#94a3b8') # Grey
                          
+                elif fmt == 'rs':
+                    try:
+                        if isinstance(val, (int, float)):
+                            if val > 0:
+                                cell.set_text_props(color='#16a34a', weight='bold') # Green
+                            elif val < 0:
+                                cell.set_text_props(color='#ef4444', weight='bold') # Red
+                    except:
+                        pass
+                        
+                elif fmt == 'trend':
+                    val_str = str(val).lower()
+                    if 'up' in val_str or 'bull' in val_str:
+                        cell.set_text_props(color='#16a34a', weight='bold')
+                    elif 'down' in val_str or 'bear' in val_str:
+                        cell.set_text_props(color='#ef4444', weight='bold')
+                        
+                elif fmt == 'signal':
+                    val_str = str(val).lower()
+                    if 'buy' in val_str:
+                        cell.set_text_props(color='#16a34a', weight='bold') # Green
+                        cell.set_facecolor('#ecfdf5') # Light Green BG
+                    elif 'sell' in val_str:
+                        cell.set_text_props(color='#ef4444', weight='bold') # Red
+                        cell.set_facecolor('#fef2f2') # Light Red BG
+
         pdf.savefig(fig)
         plt.close(fig)
 
-def run_weekly_analysis():
+def run_weekly_analysis(include_deepdive=False):
     print("Starting Weekly Analysis Report Generation...")
     
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -214,7 +261,7 @@ def run_weekly_analysis():
             # Formats
             sector_formats = {
                 'SCORE': 'score',
-                '1M RS': 'float', '3M RS': 'float', '6M RS': 'float', '1Y RS': 'float',
+                '1M RS': 'rs', '3M RS': 'rs', '6M RS': 'rs', '1Y RS': 'rs',
                 'CONSISTENT': 'bool', 'EMERGING': 'bool', 'TURNAROUND': 'bool', 'MA BREAKOUT': 'bool', 'VOL SURGE': 'bool'
             }
             render_styled_table_page(pdf, table_df, "Sector Relative Strength Matrix", sector_formats)
@@ -267,7 +314,7 @@ def run_weekly_analysis():
             if sis_res['success']:
                 # Save Plot
                 if sis_res['figure']:
-                    sis_res['figure'].suptitle(f"Sector: {sector} - Relative Strength", fontsize=16)
+                    sis_res['figure'].suptitle(f"Sector: {sector} - relative Strength", fontsize=16)
                     pdf.savefig(sis_res['figure'])
                     plt.close(sis_res['figure'])
                 
@@ -292,7 +339,7 @@ def run_weekly_analysis():
                 
                 sis_formats = {
                     'SCORE': 'score',
-                    '1M RS': 'float', '3M RS': 'float', '6M RS': 'float', '1Y RS': 'float',
+                    '1M RS': 'rs', '3M RS': 'rs', '6M RS': 'rs', '1Y RS': 'rs',
                     'CONSISTENT': 'bool', 'EMERGING': 'bool', 'TURNAROUND': 'bool', 'MA BREAKOUT': 'bool', 'VOL SURGE': 'bool'
                 }
                 render_styled_table_page(pdf, table_df, f"Top Stocks in {sector}", sis_formats)
@@ -347,21 +394,15 @@ def run_weekly_analysis():
             for item in batch_res:
                 if item['success']:
                     cols = item['columns']
-                    # Clean emojis for PDF compatibility
-                    def clean_text(s):
-                        if isinstance(s, str):
-                            # Remove common emojis used in analysis
-                            return s.replace('🟢', '').replace('🔴', '').replace('🟡', '').replace('⬆️', '').replace('⬇️', '').replace('➖', '').replace('⚠️', '').replace('💥', '').strip()
-                        return s
-
+                    
                     row = {
                         'Ticker': item['ticker'],
                         'Score': item['score'],
                         'Price': item['price'],
-                        'Trend': clean_text(cols['trend_direction']),
-                        'Signal': clean_text(cols['trend_signal']),
+                        'Trend': cols['trend_direction'],
+                        'Signal': cols['trend_signal'],
                         'RSI': cols['rsi_value'],
-                        'Squeeze': clean_text(cols['squeeze']),
+                        'Squeeze': cols['squeeze'],
                         'RS Score': cols['rs_score']
                     }
                     batch_data.append(row)
@@ -372,8 +413,10 @@ def run_weekly_analysis():
                 batch_formats = {
                     'Score': 'score',
                     'Price': 'float',
+                    'Trend': 'trend',
+                    'Signal': 'signal',
                     'RSI': 'float',
-                    'RS Score': 'float'
+                    'RS Score': 'rs'
                 }
                 render_styled_table_page(pdf, batch_df, "Batch Analysis Summary", batch_formats)
             else:
@@ -384,175 +427,178 @@ def run_weekly_analysis():
         # ==================================================================================
         # SECTION 4: INDIVIDUAL DEEPDIVE
         # ==================================================================================
-        print("\n[Section 4] Running Individual Deepdives...")
-        
-        for ticker in final_stock_list:
-            print(f"  Deepdive for {ticker}...")
+        if include_deepdive:
+            print("\n[Section 4] Running Individual Deepdives...")
             
-            # --- Text Summary Page ---
-            plt.figure(figsize=(11, 8.5))
-            plt.axis('off')
-            plt.text(0.5, 0.9, f"Deepdive Analysis: {ticker}", ha='center', va='center', fontsize=20, weight='bold')
-            
-            # Fundamentals
-            # Fundamentals
-            try:
-                # Store fundamental data to display
-                fund_data = []
+            for ticker in final_stock_list:
+                print(f"  Deepdive for {ticker}...")
                 
-                # --- 1. Long-term (4Y) ---
-                fund_data.append(["Metric (4Y)", "Growing?", "Accelerating?", "1Y Growth", "3Y CAGR"])
+                # --- Text Summary Page ---
+                plt.figure(figsize=(11, 8.5))
+                plt.axis('off')
+                plt.text(0.5, 0.9, f"Deepdive Analysis: {ticker}", ha='center', va='center', fontsize=20, weight='bold')
                 
-                # Metric: Function Mapping for 4Y
-                metrics_4y = [
-                    ('Revenue', fundamental_analysis.analyze_revenue_growth_4y),
-                    ('Net Income', fundamental_analysis.analyze_profit_growth_4y),
-                    ('ROE', fundamental_analysis.analyze_roe_growth_4y),
-                    ('EPS', fundamental_analysis.analyze_eps_growth_4y)
-                ]
-                
-                has_4y_data = False
-                for name, func in metrics_4y:
-                    try:
-                        res = func(ticker)
-                        if res.get('success'):
-                            has_4y_data = True
-                            fund_data.append([
-                                name,
-                                "YES" if res.get('is_growing') else "NO",
-                                "YES" if res.get('has_accelerating_trend') else "NO",
-                                f"{res.get('growth_1y', 0):.2f}%",
-                                f"{res.get('growth_3y_cagr', 0):.2f}%"
-                            ])
-                    except Exception as e:
-                        print(f"    Error in 4Y {name}: {e}")
-
-                # --- 2. Short-term (6Q) ---
-                fund_data.append(["", "", "", "", ""]) # Spacer
-                fund_data.append(["Metric (6Q)", "Growing?", "Recent QoQ", "Avg QoQ", "Status"])
-                
-                # Metric: Function Mapping for 6Q
-                metrics_6q = [
-                    ('Revenue', fundamental_analysis.analyze_revenue_growth_6q),
-                    ('Net Income', fundamental_analysis.analyze_profit_growth_6q),
-                    ('ROE', fundamental_analysis.analyze_roe_growth_6q),
-                    ('EPS', fundamental_analysis.analyze_eps_growth_6q)
-                ]
-                
-                has_6q_data = False
-                for name, func in metrics_6q:
-                    try:
-                        res = func(ticker)
-                        # Note: 6Q functions might return slightly different keys, check implementation if needed
-                        # Based on outline: 'recent_quarter_growth', 'average_qoq_growth'
-                        if res.get('success'):
-                            has_6q_data = True
-                            fund_data.append([
-                                name,
-                                "YES" if res.get('is_growing') else "NO",
-                                f"{res.get('recent_quarter_growth', 0):.2f}%",
-                                f"{res.get('average_qoq_growth', 0):.2f}%",
-                                "Stable" # simplified
-                            ])
-                    except Exception as e:
-                        print(f"    Error in 6Q {name}: {e}")
-
-                # Render Fundamental Table if data exists (header + at least one data row)
-                if has_4y_data or has_6q_data:
-                    # Create a sub-plot/table for fundamentals
-                    table = plt.table(cellText=fund_data, loc='center', cellLoc='center', bbox=[0.1, 0.3, 0.8, 0.5])
-                    table.auto_set_font_size(False)
-                    table.set_fontsize(8)
-                    table.scale(1, 1.5)
+                # Fundamentals
+                # Fundamentals
+                try:
+                    # Store fundamental data to display
+                    fund_data = []
                     
-                    # Optional: Bold headers (rows 0 and len(4y)+1) if we want to get fancy, 
-                    # but simple render is fine for now to fix the error.
-                else:
-                    plt.text(0.5, 0.5, "No Fundamental Data Available", ha='center', va='center')
-                
-            except Exception as e:
-                 plt.text(0.5, 0.5, f"Error fetching fundamentals: {e}", ha='center', va='center', fontsize=10)
+                    # --- 1. Long-term (4Y) ---
+                    fund_data.append(["Metric (4Y)", "Growing?", "Accelerating?", "1Y Growth", "3Y CAGR"])
+                    
+                    # Metric: Function Mapping for 4Y
+                    metrics_4y = [
+                        ('Revenue', fundamental_analysis.analyze_revenue_growth_4y),
+                        ('Net Income', fundamental_analysis.analyze_profit_growth_4y),
+                        ('ROE', fundamental_analysis.analyze_roe_growth_4y),
+                        ('EPS', fundamental_analysis.analyze_eps_growth_4y)
+                    ]
+                    
+                    has_4y_data = False
+                    for name, func in metrics_4y:
+                        try:
+                            res = func(ticker)
+                            if res.get('success'):
+                                has_4y_data = True
+                                fund_data.append([
+                                    name,
+                                    "YES" if res.get('is_growing') else "NO",
+                                    "YES" if res.get('has_accelerating_trend') else "NO",
+                                    f"{res.get('growth_1y', 0):.2f}%",
+                                    f"{res.get('growth_3y_cagr', 0):.2f}%"
+                                ])
+                        except Exception as e:
+                            print(f"    Error in 4Y {name}: {e}")
 
-            pdf.savefig()
-            plt.close()
-            
-            # --- Technical Charts ---
-            
-            # --- LAGGING INDICATORS ---
-            
-            # 1. MACD
-            try:
-                res = macd_analysis.run_analysis(ticker, show_plot=False)
-                if res.get('success'):
-                    pdf.savefig(res['figure'])
-                    plt.close(res['figure'])
-            except Exception as e:
-                print(f"    Error in MACD: {e}")
+                    # --- 2. Short-term (6Q) ---
+                    fund_data.append(["", "", "", "", ""]) # Spacer
+                    fund_data.append(["Metric (6Q)", "Growing?", "Recent QoQ", "Avg QoQ", "Status"])
+                    
+                    # Metric: Function Mapping for 6Q
+                    metrics_6q = [
+                        ('Revenue', fundamental_analysis.analyze_revenue_growth_6q),
+                        ('Net Income', fundamental_analysis.analyze_profit_growth_6q),
+                        ('ROE', fundamental_analysis.analyze_roe_growth_6q),
+                        ('EPS', fundamental_analysis.analyze_eps_growth_6q)
+                    ]
+                    
+                    has_6q_data = False
+                    for name, func in metrics_6q:
+                        try:
+                            res = func(ticker)
+                            # Note: 6Q functions might return slightly different keys, check implementation if needed
+                            # Based on outline: 'recent_quarter_growth', 'average_qoq_growth'
+                            if res.get('success'):
+                                has_6q_data = True
+                                fund_data.append([
+                                    name,
+                                    "YES" if res.get('is_growing') else "NO",
+                                    f"{res.get('recent_quarter_growth', 0):.2f}%",
+                                    f"{res.get('average_qoq_growth', 0):.2f}%",
+                                    "Stable" # simplified
+                                ])
+                        except Exception as e:
+                            print(f"    Error in 6Q {name}: {e}")
 
-            # 2. Supertrend
-            try:
-                res = supertrend_analysis.run_analysis(ticker, show_plot=False)
-                if res.get('success'):
-                    pdf.savefig(res['figure'])
-                    plt.close(res['figure'])
-            except Exception as e:
-                print(f"    Error in Supertrend: {e}")
-                
-            # 3. Bollinger Bands
-            try:
-                res = bollinger_band_analysis.run_analysis(ticker, show_plot=False)
-                if res.get('success'):
-                    pdf.savefig(res['figure'])
-                    plt.close(res['figure'])
-            except Exception as e:
-                print(f"    Error in Bollinger Bands: {e}")
+                    # Render Fundamental Table if data exists (header + at least one data row)
+                    if has_4y_data or has_6q_data:
+                        # Create a sub-plot/table for fundamentals
+                        table = plt.table(cellText=fund_data, loc='center', cellLoc='center', bbox=[0.1, 0.3, 0.8, 0.5])
+                        table.auto_set_font_size(False)
+                        table.set_fontsize(8)
+                        table.scale(1, 1.5)
+                        
+                        # Optional: Bold headers (rows 0 and len(4y)+1) if we want to get fancy, 
+                        # but simple render is fine for now to fix the error.
+                    else:
+                        plt.text(0.5, 0.5, "No Fundamental Data Available", ha='center', va='center')
+                    
+                except Exception as e:
+                     plt.text(0.5, 0.5, f"Error fetching fundamentals: {e}", ha='center', va='center', fontsize=10)
 
-            # 4. EMA Crossover
-            try:
-                res = crossover_analysis.run_analysis(ticker, show_plot=False)
-                if res.get('success'):
-                    pdf.savefig(res['figure'])
-                    plt.close(res['figure'])
-            except Exception as e:
-                print(f"    Error in EMA Crossover: {e}")
+                pdf.savefig()
+                plt.close()
                 
-            # 5. Donchian Channels
-            try:
-                res = donchian_channel_analysis.run_analysis(ticker, show_plot=False)
-                if res.get('success'):
-                    pdf.savefig(res['figure'])
-                    plt.close(res['figure'])
-            except Exception as e:
-                print(f"    Error in Donchian Channels: {e}")
+                # --- Technical Charts ---
+                
+                # --- LAGGING INDICATORS ---
+                
+                # 1. MACD
+                try:
+                    res = macd_analysis.run_analysis(ticker, show_plot=False)
+                    if res.get('success'):
+                        pdf.savefig(res['figure'])
+                        plt.close(res['figure'])
+                except Exception as e:
+                    print(f"    Error in MACD: {e}")
 
-            # --- LEADING INDICATORS ---
+                # 2. Supertrend
+                try:
+                    res = supertrend_analysis.run_analysis(ticker, show_plot=False)
+                    if res.get('success'):
+                        pdf.savefig(res['figure'])
+                        plt.close(res['figure'])
+                except Exception as e:
+                    print(f"    Error in Supertrend: {e}")
+                    
+                # 3. Bollinger Bands
+                try:
+                    res = bollinger_band_analysis.run_analysis(ticker, show_plot=False)
+                    if res.get('success'):
+                        pdf.savefig(res['figure'])
+                        plt.close(res['figure'])
+                except Exception as e:
+                    print(f"    Error in Bollinger Bands: {e}")
 
-            # 6. RSI Divergence
-            try:
-                res = rsi_divergence_analysis.run_analysis(ticker, show_plot=False)
-                if res.get('success'):
-                    pdf.savefig(res['figure'])
-                    plt.close(res['figure'])
-            except Exception as e:
-                print(f"    Error in RSI Divergence: {e}")
-                
-            # 7. RSI-Volume Divergence
-            try:
-                res = rsi_volume_divergence.run_analysis(ticker, show_plot=False)
-                if res.get('success'):
-                    pdf.savefig(res['figure'])
-                    plt.close(res['figure'])
-            except Exception as e:
-                print(f"    Error in RSI-Volume Divergence: {e}")
-                
-            # 8. Volatility Squeeze
-            try:
-                res = volatility_squeeze_analysis.run_analysis(ticker, show_plot=False)
-                if res.get('success'):
-                    pdf.savefig(res['figure'])
-                    plt.close(res['figure'])
-            except Exception as e:
-                print(f"    Error in Volatility Squeeze: {e}")
+                # 4. EMA Crossover
+                try:
+                    res = crossover_analysis.run_analysis(ticker, show_plot=False)
+                    if res.get('success'):
+                        pdf.savefig(res['figure'])
+                        plt.close(res['figure'])
+                except Exception as e:
+                    print(f"    Error in EMA Crossover: {e}")
+                    
+                # 5. Donchian Channels
+                try:
+                    res = donchian_channel_analysis.run_analysis(ticker, show_plot=False)
+                    if res.get('success'):
+                        pdf.savefig(res['figure'])
+                        plt.close(res['figure'])
+                except Exception as e:
+                    print(f"    Error in Donchian Channels: {e}")
+
+                # --- LEADING INDICATORS ---
+
+                # 6. RSI Divergence
+                try:
+                    res = rsi_divergence_analysis.run_analysis(ticker, show_plot=False)
+                    if res.get('success'):
+                        pdf.savefig(res['figure'])
+                        plt.close(res['figure'])
+                except Exception as e:
+                    print(f"    Error in RSI Divergence: {e}")
+                    
+                # 7. RSI-Volume Divergence
+                try:
+                    res = rsi_volume_divergence.run_analysis(ticker, show_plot=False)
+                    if res.get('success'):
+                        pdf.savefig(res['figure'])
+                        plt.close(res['figure'])
+                except Exception as e:
+                    print(f"    Error in RSI-Volume Divergence: {e}")
+                    
+                # 8. Volatility Squeeze
+                try:
+                    res = volatility_squeeze_analysis.run_analysis(ticker, show_plot=False)
+                    if res.get('success'):
+                        pdf.savefig(res['figure'])
+                        plt.close(res['figure'])
+                except Exception as e:
+                    print(f"    Error in Volatility Squeeze: {e}")
+        else:
+             print("\n[Section 4] Individual Deepdives skipped (include_deepdive=False).")
                 
     print(f"\nReport generated successfully: {report_filename}")
 

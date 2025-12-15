@@ -129,7 +129,7 @@ SUPERTREND_CONFIG = {
     # Best: 365 (1 year for trends), 180 (6 months for recent analysis), 730 (2 years for long-term)
     'LOOKBACK_PERIODS': 730,  # 2 year
     
-    'DEFAULT_TICKER': 'LT.NS',
+    'DEFAULT_TICKER': 'HDFCBANK.NS',
     'BATCH_RELATIVE_PATH': '../data/tickers_list.json',
     'RUN_BATCH': False
 }
@@ -340,6 +340,16 @@ def run_analysis(ticker=None, show_plot=True, config=None):
         supertrend_value = float(df['Supertrend'].iloc[-1])
         status = "UPTREND (Buy)" if last_trend == 1 else "DOWNTREND (Sell)"
         
+        # Find the date of the last trend change (Signal Date)
+        # Create a mask where trend changed
+        trend_changes = df[df['Trend'] != df['Trend'].shift(1)]
+        if not trend_changes.empty:
+            # The last change
+            last_signal_date = trend_changes.index[-1]
+        else:
+            # If no change in the entire dataset (unlikely for long history), use the first date
+            last_signal_date = df.index[0]
+        
         # Generate plot
         fig = plot_supertrend(df, ticker, show_plot=show_plot, config=current_config)
         
@@ -349,6 +359,7 @@ def run_analysis(ticker=None, show_plot=True, config=None):
             'last_trend': last_trend,
             'last_price': last_price,
             'last_date': last_date,
+            'signal_date': last_signal_date,
             'supertrend_value': supertrend_value,
             'status': status,
             'figure': fig,
