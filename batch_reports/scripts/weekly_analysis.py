@@ -18,11 +18,12 @@ import pandas as pd
 import numpy as np
 
 # Add parent directories to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'market_analysis'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'fundamental_analysis'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lagging_indicator_analysis'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'leading_indicator_analysis'))
+# Scripts are now in batch_reports/scripts, so we need to go up two levels to reach root
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'market_analysis'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'fundamental_analysis'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'lagging_indicator_analysis'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'leading_indicator_analysis'))
 
 # Import Analysis Modules
 try:
@@ -38,6 +39,8 @@ try:
     import rsi_divergence_analysis
     import rsi_volume_divergence
     import volatility_squeeze_analysis
+    # Import stock_detailed_report for deep dive formatting
+    import stock_detailed_report
 except ImportError as e:
     print(f"Error importing modules: {e}")
     sys.exit(1)
@@ -220,7 +223,13 @@ def run_weekly_analysis(include_deepdive=False):
     print("Starting Weekly Analysis Report Generation...")
     
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    report_filename = os.path.join(os.path.dirname(__file__), f'Weekly_Report_{timestamp}.pdf')
+    
+    # Define output directory (batch_reports/reports)
+    output_dir = os.path.join(os.path.dirname(__file__), '..', 'reports')
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        
+    report_filename = os.path.join(output_dir, f'Weekly_Report_{timestamp}.pdf')
     
     with PdfPages(report_filename) as pdf:
         # Title Page
@@ -433,174 +442,23 @@ def run_weekly_analysis(include_deepdive=False):
             for ticker in final_stock_list:
                 print(f"  Deepdive for {ticker}...")
                 
-                # --- Text Summary Page ---
-                plt.figure(figsize=(11, 8.5))
-                plt.axis('off')
-                plt.text(0.5, 0.9, f"Deepdive Analysis: {ticker}", ha='center', va='center', fontsize=20, weight='bold')
+                # Use functions from stock_detailed_report.py for consistent formatting
+                # 1. Title Page
+                current_price = stock_detailed_report.add_price_chart(pdf, ticker, save_plot=False)
+                stock_detailed_report.create_title_page(pdf, ticker, current_price)
                 
-                # Fundamentals
-                # Fundamentals
-                try:
-                    # Store fundamental data to display
-                    fund_data = []
-                    
-                    # --- 1. Long-term (4Y) ---
-                    fund_data.append(["Metric (4Y)", "Growing?", "Accelerating?", "1Y Growth", "3Y CAGR"])
-                    
-                    # Metric: Function Mapping for 4Y
-                    metrics_4y = [
-                        ('Revenue', fundamental_analysis.analyze_revenue_growth_4y),
-                        ('Net Income', fundamental_analysis.analyze_profit_growth_4y),
-                        ('ROE', fundamental_analysis.analyze_roe_growth_4y),
-                        ('EPS', fundamental_analysis.analyze_eps_growth_4y)
-                    ]
-                    
-                    has_4y_data = False
-                    for name, func in metrics_4y:
-                        try:
-                            res = func(ticker)
-                            if res.get('success'):
-                                has_4y_data = True
-                                fund_data.append([
-                                    name,
-                                    "YES" if res.get('is_growing') else "NO",
-                                    "YES" if res.get('has_accelerating_trend') else "NO",
-                                    f"{res.get('growth_1y', 0):.2f}%",
-                                    f"{res.get('growth_3y_cagr', 0):.2f}%"
-                                ])
-                        except Exception as e:
-                            print(f"    Error in 4Y {name}: {e}")
-
-                    # --- 2. Short-term (6Q) ---
-                    fund_data.append(["", "", "", "", ""]) # Spacer
-                    fund_data.append(["Metric (6Q)", "Growing?", "Recent QoQ", "Avg QoQ", "Status"])
-                    
-                    # Metric: Function Mapping for 6Q
-                    metrics_6q = [
-                        ('Revenue', fundamental_analysis.analyze_revenue_growth_6q),
-                        ('Net Income', fundamental_analysis.analyze_profit_growth_6q),
-                        ('ROE', fundamental_analysis.analyze_roe_growth_6q),
-                        ('EPS', fundamental_analysis.analyze_eps_growth_6q)
-                    ]
-                    
-                    has_6q_data = False
-                    for name, func in metrics_6q:
-                        try:
-                            res = func(ticker)
-                            # Note: 6Q functions might return slightly different keys, check implementation if needed
-                            # Based on outline: 'recent_quarter_growth', 'average_qoq_growth'
-                            if res.get('success'):
-                                has_6q_data = True
-                                fund_data.append([
-                                    name,
-                                    "YES" if res.get('is_growing') else "NO",
-                                    f"{res.get('recent_quarter_growth', 0):.2f}%",
-                                    f"{res.get('average_qoq_growth', 0):.2f}%",
-                                    "Stable" # simplified
-                                ])
-                        except Exception as e:
-                            print(f"    Error in 6Q {name}: {e}")
-
-                    # Render Fundamental Table if data exists (header + at least one data row)
-                    if has_4y_data or has_6q_data:
-                        # Create a sub-plot/table for fundamentals
-                        table = plt.table(cellText=fund_data, loc='center', cellLoc='center', bbox=[0.1, 0.3, 0.8, 0.5])
-                        table.auto_set_font_size(False)
-                        table.set_fontsize(8)
-                        table.scale(1, 1.5)
-                        
-                        # Optional: Bold headers (rows 0 and len(4y)+1) if we want to get fancy, 
-                        # but simple render is fine for now to fix the error.
-                    else:
-                        plt.text(0.5, 0.5, "No Fundamental Data Available", ha='center', va='center')
-                    
-                except Exception as e:
-                     plt.text(0.5, 0.5, f"Error fetching fundamentals: {e}", ha='center', va='center', fontsize=10)
-
-                pdf.savefig()
-                plt.close()
+                # 2. Price Chart
+                stock_detailed_report.add_price_chart(pdf, ticker, save_plot=True)
                 
-                # --- Technical Charts ---
+                # 3. Fundamental Analysis
+                stock_detailed_report.render_fundamentals_page(pdf, ticker)
                 
-                # --- LAGGING INDICATORS ---
-                
-                # 1. MACD
-                try:
-                    res = macd_analysis.run_analysis(ticker, show_plot=False)
-                    if res.get('success'):
-                        pdf.savefig(res['figure'])
-                        plt.close(res['figure'])
-                except Exception as e:
-                    print(f"    Error in MACD: {e}")
-
-                # 2. Supertrend
-                try:
-                    res = supertrend_analysis.run_analysis(ticker, show_plot=False)
-                    if res.get('success'):
-                        pdf.savefig(res['figure'])
-                        plt.close(res['figure'])
-                except Exception as e:
-                    print(f"    Error in Supertrend: {e}")
-                    
-                # 3. Bollinger Bands
-                try:
-                    res = bollinger_band_analysis.run_analysis(ticker, show_plot=False)
-                    if res.get('success'):
-                        pdf.savefig(res['figure'])
-                        plt.close(res['figure'])
-                except Exception as e:
-                    print(f"    Error in Bollinger Bands: {e}")
-
-                # 4. EMA Crossover
-                try:
-                    res = crossover_analysis.run_analysis(ticker, show_plot=False)
-                    if res.get('success'):
-                        pdf.savefig(res['figure'])
-                        plt.close(res['figure'])
-                except Exception as e:
-                    print(f"    Error in EMA Crossover: {e}")
-                    
-                # 5. Donchian Channels
-                try:
-                    res = donchian_channel_analysis.run_analysis(ticker, show_plot=False)
-                    if res.get('success'):
-                        pdf.savefig(res['figure'])
-                        plt.close(res['figure'])
-                except Exception as e:
-                    print(f"    Error in Donchian Channels: {e}")
-
-                # --- LEADING INDICATORS ---
-
-                # 6. RSI Divergence
-                try:
-                    res = rsi_divergence_analysis.run_analysis(ticker, show_plot=False)
-                    if res.get('success'):
-                        pdf.savefig(res['figure'])
-                        plt.close(res['figure'])
-                except Exception as e:
-                    print(f"    Error in RSI Divergence: {e}")
-                    
-                # 7. RSI-Volume Divergence
-                try:
-                    res = rsi_volume_divergence.run_analysis(ticker, show_plot=False)
-                    if res.get('success'):
-                        pdf.savefig(res['figure'])
-                        plt.close(res['figure'])
-                except Exception as e:
-                    print(f"    Error in RSI-Volume Divergence: {e}")
-                    
-                # 8. Volatility Squeeze
-                try:
-                    res = volatility_squeeze_analysis.run_analysis(ticker, show_plot=False)
-                    if res.get('success'):
-                        pdf.savefig(res['figure'])
-                        plt.close(res['figure'])
-                except Exception as e:
-                    print(f"    Error in Volatility Squeeze: {e}")
+                # 4. Technical Indicators (New Order)
+                stock_detailed_report.render_technical_indicators(pdf, ticker)
         else:
-             print("\n[Section 4] Individual Deepdives skipped (include_deepdive=False).")
+            print("\n[Section 4] Individual Deepdives skipped (include_deepdive=False).")
                 
     print(f"\nReport generated successfully: {report_filename}")
 
 if __name__ == "__main__":
-    run_weekly_analysis()
+    run_weekly_analysis(True)

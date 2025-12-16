@@ -314,8 +314,8 @@ def fetch_data(ticker, config=None):
         start_date = end_date - timedelta(days=lookback)
     
     # Fetch data using yfinance
-    data = yf.download(ticker, start=start_date, end=end_date, interval=interval, progress=False)
-    
+    data = yf.download(ticker, start=start_date, end=end_date, interval=interval, progress=False,auto_adjust=False,multi_level_index=False)
+        
     if data.empty:
         raise ValueError(f"No data retrieved for ticker {ticker}")
     
@@ -556,7 +556,98 @@ def detect_rs_signals(df_stock, rs_ratios, classification, config=None):
     return signals
 
 
-def get_trading_signal_summary(classification, rs_ratios):
+def analyze_turnaround(df_stock, rs_ratios, classification):
+    """
+    Identifies early turnaround signals.
+    
+    Detects if a stock is showing early signs of reversing from underperformance:
+    1. Short-term RS rising (Emerging momentum: 1M > 3M RS)
+    2. Medium-term RS still lagging (6M or 1Y RS <= 1.0)
+    3. Absolute performance improving (3M performance > 6M performance)
+    
+    Parameters:
+    -----------
+    df_stock : pd.DataFrame
+        Stock data with Close prices
+    rs_ratios : dict
+        Latest RS ratios for all timeframes
+    classification : str
+        Current classification
+        
+    Returns:
+    --------
+    dict
+        Turnaround analysis results with:
+        - is_turnaround: bool
+        - emerging_rs: bool
+        - medium_term_lagging: bool
+        - absolute_perf_improving: bool
+        - description: str
+    """
+    result = {
+        'is_turnaround': False,
+        'emerging_rs': False,
+        'medium_term_lagging': False,
+        'absolute_perf_improving': False,
+        'description': 'No turnaround signal detected'
+    }
+    
+    # 1. Check for emerging RS (short-term rising)
+    if '1M' in rs_ratios and '3M' in rs_ratios:
+        result['emerging_rs'] = (
+            rs_ratios['1M'] is not None and 
+            rs_ratios['3M'] is not None and 
+            rs_ratios['1M'] > rs_ratios['3M']
+        )
+    
+    # 2. Check for medium-term lagging
+    medium_term_lagging = False
+    if '6M' in rs_ratios and rs_ratios['6M'] is not None:
+        medium_term_lagging = bool(rs_ratios['6M'] <= 1.0)
+    if '1Y' in rs_ratios and rs_ratios['1Y'] is not None:
+        medium_term_lagging = medium_term_lagging or bool(rs_ratios['1Y'] <= 1.0)
+    result['medium_term_lagging'] = medium_term_lagging
+    
+    # 3. Check for absolute performance improving (3M growth > 6M growth)
+    if len(df_stock) > 126:  # Need at least 6 months of data
+        try:
+            
+            # Calculate 3M and 6M absolute performance
+            current_price = df_stock['Close'].iloc[-1]
+            price_3m_ago = df_stock['Close'].iloc[-63]  # ~3 months
+            price_6m_ago = df_stock['Close'].iloc[-126] # ~6 months
+            
+            perf_3m = (current_price / price_3m_ago) - 1
+            perf_6m = (current_price / price_6m_ago) - 1
+            
+            result['absolute_perf_improving'] = bool(perf_3m > perf_6m)
+            result['perf_3m'] = float(perf_3m * 100)  # Store as percentage
+            result['perf_6m'] = float(perf_6m * 100)
+
+        except Exception:
+            result['absolute_perf_improving'] = False
+    
+    # Turnaround signal: All three conditions must be true
+    # Ensure all values are scalar booleans to avoid pandas ambiguity
+    result['is_turnaround'] = bool(
+        result['emerging_rs'] and 
+        result['medium_term_lagging'] and 
+        result['absolute_perf_improving']
+    )
+        
+    if result['is_turnaround']:
+        result['description'] = (
+            f"Early Turnaround Signal: "
+            f"Emerging RS (1M>{rs_ratios.get('1M', 0):.2f} > 3M>{rs_ratios.get('3M', 0):.2f}), "
+            f"Medium-term lagging (6M/1Y RS ≤1.0), "
+            f"Absolute perf improving (3M>{result.get('perf_3m', 0):.1f}% > 6M>{result.get('perf_6m', 0):.1f}%)"
+        )
+    
+    return result
+
+
+
+def get_trading_signal_summary(classification, rs_ratios, turnaround_info=None):
     """
     Get actionable trading signal summary based on classification.
     
@@ -566,6 +657,8 @@ def get_trading_signal_summary(classification, rs_ratios):
         Overall classification (Strong Leader, Emerging Leader, etc.)
     rs_ratios : dict
         Dictionary with RS ratios for each timeframe
+    turnaround_info : dict, optional
+        Turnaround analysis results from analyze_turnaround()
         
     Returns:
     --------
@@ -627,6 +720,16 @@ def get_trading_signal_summary(classification, rs_ratios):
                 "Action: Skip or sell"
             ]
         },
+        "Early Turnaround": {
+            "title": "Early Turnaround (Potential Reversal)",
+            "points": [
+                "Short-term RS accelerating",
+                "Medium-term still underperforming",
+                "Absolute performance improving",
+                "Early stage reversal candidate",
+                "Action: Watch closely, wait for confirmation"
+            ]
+        },
         "Insufficient Data": {
             "title": "Insufficient Data",
             "points": [
@@ -637,7 +740,11 @@ def get_trading_signal_summary(classification, rs_ratios):
         }
     }
     
-    summary_data = summaries.get(classification, summaries["Neutral"])
+    # Check if we should use turnaround classification
+    if turnaround_info and turnaround_info.get('is_turnaround'):
+        summary_data = summaries["Early Turnaround"]
+    else:
+        summary_data = summaries.get(classification, summaries["Neutral"])
     
     # Build formatted output
     output = f"\n{'─'*60}\n"
@@ -652,7 +759,23 @@ def get_trading_signal_summary(classification, rs_ratios):
         else:
             output += f"  • {point}\n"
     
+    # Add turnaround details if detected
+    if turnaround_info and turnaround_info.get('is_turnaround'):
+        output += f"\n{'─'*60}\n"
+        output += f"🔄 TURNAROUND SIGNAL DETAILS\n"
+        output += f"{'─'*60}\n"
+        output += f"  ✓ Emerging RS: 1M ({rs_ratios.get('1M', 0):.3f}) > 3M ({rs_ratios.get('3M', 0):.3f})\n"
+        output += f"  ✓ Medium-term lagging: "
+        if '6M' in rs_ratios:
+            output += f"6M RS = {rs_ratios['6M']:.3f}"
+        if '1Y' in rs_ratios:
+            output += f", 1Y RS = {rs_ratios['1Y']:.3f}"
+        output += "\n"
+        if 'perf_3m' in turnaround_info and 'perf_6m' in turnaround_info:
+            output += f"  ✓ Performance improving: 3M ({turnaround_info['perf_3m']:.1f}%) > 6M ({turnaround_info['perf_6m']:.1f}%)\n"
+    
     return output
+
 
 
 def plot_rs_analysis(df_stock, df_benchmark, ticker, benchmark, rs_ratios, classification, signals, config=None):
@@ -847,6 +970,18 @@ def run_analysis(ticker, benchmark=None, show_plot=True, config=None, use_sector
         # Detect signals
         signals = detect_rs_signals(df_stock, rs_ratios, classification, config)
         
+        # Analyze turnaround opportunity
+        turnaround_info = analyze_turnaround(df_stock, rs_ratios, classification)
+        
+        # Add turnaround to signals if detected
+        if turnaround_info['is_turnaround']:
+            signals.append({
+                'date': df_stock.index[-1].strftime('%Y-%m-%d'),
+                'type': 'Early Turnaround',
+                'description': turnaround_info['description'],
+                'rs_ratios': rs_ratios.copy()
+            })
+        
         # Generate plot
         fig = plot_rs_analysis(df_stock, df_benchmark, ticker, benchmark, 
                               rs_ratios, classification, signals, config)
@@ -869,8 +1004,8 @@ def run_analysis(ticker, benchmark=None, show_plot=True, config=None, use_sector
             print(f"  - {signal['type']}: {signal['description']}")
         print(f"{'='*60}")
         
-        # Print trading signal summary
-        trading_summary = get_trading_signal_summary(classification, rs_ratios)
+        # Print trading signal summary (with turnaround info)
+        trading_summary = get_trading_signal_summary(classification, rs_ratios, turnaround_info)
         print(trading_summary)
         
         result = {
@@ -881,7 +1016,8 @@ def run_analysis(ticker, benchmark=None, show_plot=True, config=None, use_sector
             'rs_score': rs_score,
             'classification': classification,
             'signals': signals,
-            'trading_summary': get_trading_signal_summary(classification, rs_ratios),
+            'turnaround_info': turnaround_info,
+            'trading_summary': get_trading_signal_summary(classification, rs_ratios, turnaround_info),
             'figure': fig,
             'stock_data': df_stock,
             'benchmark_data': df_benchmark
@@ -908,15 +1044,9 @@ def run_analysis(ticker, benchmark=None, show_plot=True, config=None, use_sector
 # Main execution when run as standalone script
 if __name__ == "__main__":
     # Example: Analyze an Indian stock against sector index
-    print("Running RS Analysis on LT.NS (Indian Stock)...")
-    print("Using SECTOR INDEX for comparison\n")
-    result = run_analysis("DABUR.NS", show_plot=True, use_sector_index=True)
+    result = run_analysis("COLPAL.NS", show_plot=True, use_sector_index=True)
     
     # Example: Analyze using broad market index
-    # print("\nRunning RS Analysis on LT.NS (Indian Stock)...")
-    # print("Using BROAD MARKET INDEX for comparison\n")
     # result = run_analysis("LT.NS", show_plot=True, use_sector_index=False)
     
-    # Example: Analyze a US stock (Apple)
-    # print("\nRunning RS Analysis on AAPL (US Stock)...")
-    # result = run_analysis("AAPL", show_plot=True)
+

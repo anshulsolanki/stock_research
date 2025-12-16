@@ -19,10 +19,11 @@ import numpy as np
 import yfinance as yf
 
 # Add parent directories to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'fundamental_analysis'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lagging_indicator_analysis'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'leading_indicator_analysis'))
+# Scripts are now in batch_reports/scripts, so we need to go up two levels to reach root
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'fundamental_analysis'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'lagging_indicator_analysis'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'leading_indicator_analysis'))
 
 # Import Analysis Modules
 try:
@@ -34,6 +35,7 @@ try:
     import crossover_analysis
     import rsi_volume_divergence
     import volatility_squeeze_analysis
+    import rs_analysis
 except ImportError as e:
     print(f"Error importing modules: {e}")
     sys.exit(1)
@@ -339,17 +341,31 @@ def render_summary_page(pdf, title, summary_data):
         fig.text(0.15, y_position, text, ha='left', va='top',
                  fontsize=12, weight='bold', color='#475569')
         
-        # Determine color based on value
-        color = '#1e293b'  # Default
+        # Determine color and weight based on value content
+        color = '#1e293b'  # Default Slate-800
+        weight = 'normal'
+        
         if isinstance(value, str):
             value_lower = str(value).lower()
-            if any(word in value_lower for word in ['bullish', 'buy', 'uptrend', 'positive', 'strengthening']):
-                color = '#16a34a'  # Green
-            elif any(word in value_lower for word in ['bearish', 'sell', 'downtrend', 'negative', 'weakening']):
-                color = '#ef4444'  # Red
+            
+            # RED keywords (Negative/Bearish) - Check FIRST to catch "Strong Downtrend" correctly
+            if any(word in value_lower for word in ['bearish', 'sell', 'downtrend', 'negative', 'weakening', 'lagging', 'declining', 'no', 'underperforming']):
+                color = '#dc2626'  # Red-600
+                weight = 'bold'
+                
+            # GREEN keywords (Positive/Bullish)
+            elif any(word in value_lower for word in ['bullish', 'buy', 'uptrend', 'positive', 'strengthening', 'strong', 'leader', 'emerging', 'accelerating', 'detected', 'growing', 'yes']):
+                color = '#16a34a'  # Green-600
+                weight = 'bold'
+                
+            # ORANGE/AMBER keywords (Neutral/Warning)
+            elif any(word in value_lower for word in ['neutral', 'mixed', 'monitor']):
+                color = '#d97706'  # Amber-600
+                weight = 'bold'
         
-        fig.text(0.35, y_position, str(value), ha='left', va='top',
-                 fontsize=12, color=color)
+        # Increased x-offset to 0.50 to prevent overlap with long keys
+        fig.text(0.50, y_position, str(value), ha='left', va='top',
+                 fontsize=12, color=color, weight=weight)
         
         y_position -= line_height
     
@@ -368,13 +384,7 @@ def add_analysis_chart(pdf, figure, title=None):
         plt.close(figure)
 
 
-def render_leading_indicators(pdf, ticker):
-    """Calls existing leading indicator modules and adds charts."""
-    print("  Running Leading Indicator Analyses...")
-    
-    # RSI Divergence - REMOVED as per request (keeping only RSI-Volume)
-    
-    # RSI-Volume Divergence
+def render_rsi_volume_divergence(pdf, ticker):
     try:
         print("    - RSI-Volume Divergence")
         res = rsi_volume_divergence.run_analysis(ticker, show_plot=False)
@@ -404,8 +414,9 @@ def render_leading_indicators(pdf, ticker):
                 add_analysis_chart(pdf, res['figure'], f"{ticker} - RSI-Volume Divergence Analysis")
     except Exception as e:
         print(f"    Error in RSI-Volume: {e}")
-    
-    # Volatility Squeeze
+
+
+def render_volatility_squeeze(pdf, ticker):
     try:
         print("    - Volatility Squeeze")
         res = volatility_squeeze_analysis.run_analysis(ticker, show_plot=False)
@@ -434,11 +445,7 @@ def render_leading_indicators(pdf, ticker):
         print(f"    Error in Volatility Squeeze: {e}")
 
 
-def render_lagging_indicators(pdf, ticker):
-    """Calls existing lagging indicator modules and adds charts."""
-    print("  Running Lagging Indicator Analyses...")
-    
-    # MACD
+def render_macd(pdf, ticker):
     try:
         print("    - MACD")
         res = macd_analysis.run_analysis(ticker, show_plot=False)
@@ -470,8 +477,9 @@ def render_lagging_indicators(pdf, ticker):
                 add_analysis_chart(pdf, res['figure'], f"{ticker} - MACD Analysis")
     except Exception as e:
         print(f"    Error in MACD: {e}")
-    
-    # Supertrend
+
+
+def render_supertrend(pdf, ticker):
     try:
         print("    - Supertrend")
         res = supertrend_analysis.run_analysis(ticker, show_plot=False)
@@ -497,8 +505,9 @@ def render_lagging_indicators(pdf, ticker):
                 add_analysis_chart(pdf, res['figure'], f"{ticker} - Supertrend Analysis")
     except Exception as e:
         print(f"    Error in Supertrend: {e}")
-    
-    # Bollinger Bands
+
+
+def render_bollinger_bands(pdf, ticker):
     try:
         print("    - Bollinger Bands")
         res = bollinger_band_analysis.run_analysis(ticker, show_plot=False)
@@ -528,8 +537,9 @@ def render_lagging_indicators(pdf, ticker):
                 add_analysis_chart(pdf, res['figure'], f"{ticker} - Bollinger Bands Analysis")
     except Exception as e:
         print(f"    Error in Bollinger Bands: {e}")
-    
-    # EMA Crossover
+
+
+def render_ema_crossover(pdf, ticker):
     try:
         print("    - EMA Crossover")
         res = crossover_analysis.run_analysis(ticker, show_plot=False)
@@ -553,9 +563,139 @@ def render_lagging_indicators(pdf, ticker):
                 add_analysis_chart(pdf, res['figure'], f"{ticker} - EMA Crossover Analysis")
     except Exception as e:
         print(f"    Error in Crossover: {e}")
-    
-    except Exception as e:
+
+
         print(f"    Error in Crossover: {e}")
+
+
+def render_rs_analysis(pdf, ticker):
+    """
+    Runs RS analysis and adds summary + chart to PDF.
+    Uses sector-specific index for comparison if available.
+    """
+    try:
+        print("  Running Relative Strength Analysis...")
+        # Run RS analysis with sector index
+        res = rs_analysis.run_analysis(ticker, show_plot=False, use_sector_index=True)
+        
+        if res.get('success'):
+            # Create summary page with better organization
+            summary = {}
+            
+            # === SECTION 1: Overview ===
+            summary['═══ OVERVIEW ═══'] = ''
+            summary['Benchmark Index'] = res.get('benchmark', 'N/A')
+            if res.get('sector'):
+                summary['Sector'] = res.get('sector')
+            summary['Classification'] = res.get('classification', 'Unknown')
+            summary['RS Score'] = f"{res.get('rs_score', 0):.1f}/100"
+            
+            # === SECTION 2: RS Ratios ===
+            summary[''] = ''  # Spacer
+            summary['═══ RS RATIOS ═══'] = ''
+            rs_ratios = res.get('rs_ratios', {})
+            for name in ['1M', '3M', '6M', '1Y']:
+                if name in rs_ratios and rs_ratios[name] is not None:
+                    value = rs_ratios[name]
+                    # Add text label instead of emoji for PDF compatibility
+                    if value >= 1.2:
+                        indicator = '[Strong]'
+                    elif value >= 1.0:
+                        indicator = '[Leader]'
+                    elif value >= 0.8:
+                        indicator = '[Neutral]'
+                    else:
+                        indicator = '[Lagging]'
+                    summary[f'  {name} RS'] = f"{value:.3f}  {indicator}"
+            
+            # === SECTION 3: Turnaround Analysis ===
+            turnaround_info = res.get('turnaround_info', {})
+            if turnaround_info:
+                summary['  '] = ''  # Spacer
+                summary['═══ TURNAROUND ANALYSIS ═══'] = ''
+                
+                # Check each condition
+                emerging_rs = turnaround_info.get('emerging_rs', False)
+                medium_lagging = turnaround_info.get('medium_term_lagging', False)
+                perf_improving = turnaround_info.get('absolute_perf_improving', False)
+                is_turnaround = turnaround_info.get('is_turnaround', False)
+                
+                # Overall status
+                if is_turnaround:
+                    summary['Turnaround Status'] = '!! DETECTED !!'
+                else:
+                    summary['Turnaround Status'] = 'Not Detected'
+                
+                # Detailed breakdown
+                summary['   '] = ''  # Spacer
+                summary['SIGNAL CRITERIA:'] = ''
+                
+                # Criterion 1: Emerging RS
+                if emerging_rs:
+                    summary['  ✓ Emerging RS'] = f"1M ({rs_ratios.get('1M', 0):.3f}) > 3M ({rs_ratios.get('3M', 0):.3f})"
+                else:
+                    summary['  ✗ Emerging RS'] = 'Not accelerating'
+                
+                # Criterion 2: Medium-term lagging
+                if medium_lagging:
+                    lagging_details = []
+                    if '6M' in rs_ratios and rs_ratios['6M'] <= 1.0:
+                        lagging_details.append(f"6M={rs_ratios['6M']:.3f}")
+                    if '1Y' in rs_ratios and rs_ratios['1Y'] <= 1.0:
+                        lagging_details.append(f"1Y={rs_ratios['1Y']:.3f}")
+                    summary['  ✓ Medium-term Lagging'] = f"{', '.join(lagging_details)} (≤1.0)"
+                else:
+                    summary['  ✗ Medium-term Lagging'] = 'Not lagging'
+                
+                # Criterion 3: Performance improving
+                if perf_improving and 'perf_3m' in turnaround_info and 'perf_6m' in turnaround_info:
+                    perf_3m = turnaround_info['perf_3m']
+                    perf_6m = turnaround_info['perf_6m']
+                    summary['  ✓ Performance Improving'] = f"3M ({perf_3m:+.1f}%) > 6M ({perf_6m:+.1f}%)"
+                else:
+                    summary['  ✗ Performance Improving'] = 'Not improving'
+            
+            # Render summary page
+            render_summary_page(pdf, f"{ticker} - Relative Strength Analysis", summary)
+            
+            # Add RS analysis chart
+            if res.get('figure'):
+                add_analysis_chart(pdf, res['figure'])
+    except Exception as e:
+        print(f"    Error in RS Analysis: {e}")
+
+
+def render_technical_indicators(pdf, ticker):
+    """
+    Renders all technical indicators in the specified order:
+    1. EMA Crossover
+    2. Bollinger Bands
+    3. Supertrend
+    4. MACD
+    5. Volatility Squeeze
+    6. RSI-Volume Divergence
+    """
+    print("  Running Technical Analysis...")
+    render_ema_crossover(pdf, ticker)
+    render_bollinger_bands(pdf, ticker)
+    render_supertrend(pdf, ticker)
+    render_macd(pdf, ticker)
+    render_volatility_squeeze(pdf, ticker)
+    render_rsi_volume_divergence(pdf, ticker)
+
+
+# Backward compatibility wrappers (if needed)
+def render_leading_indicators(pdf, ticker):
+    """Warning: Deprecated. Use render_technical_indicators instead."""
+    render_volatility_squeeze(pdf, ticker)
+    render_rsi_volume_divergence(pdf, ticker)
+
+def render_lagging_indicators(pdf, ticker):
+    """Warning: Deprecated. Use render_technical_indicators instead."""
+    render_ema_crossover(pdf, ticker)
+    render_bollinger_bands(pdf, ticker)
+    render_supertrend(pdf, ticker)
+    render_macd(pdf, ticker)
 
 
 def generate_stock_report(ticker, output_dir=None):
@@ -564,7 +704,7 @@ def generate_stock_report(ticker, output_dir=None):
     
     Args:
         ticker: Stock symbol (e.g., "HDFCBANK.NS")
-        output_dir: Optional output directory (default: current directory)
+        output_dir: Optional output directory (default: batch_reports/reports)
     
     Returns:
         Path to generated PDF file
@@ -576,7 +716,11 @@ def generate_stock_report(ticker, output_dir=None):
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     
     if output_dir is None:
-        output_dir = os.path.dirname(__file__)
+        # Default to ../reports relative to this script
+        output_dir = os.path.join(os.path.dirname(__file__), '..', 'reports')
+        # Ensure reports directory exists
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
     
     report_filename = os.path.join(output_dir, f'Stock_Report_{ticker.replace(".", "_")}_{timestamp}.pdf')
     
@@ -589,14 +733,15 @@ def generate_stock_report(ticker, output_dir=None):
         # 2. Price Chart (Add to PDF now)
         add_price_chart(pdf, ticker, save_plot=True)
         
-        # 2. Fundamental Analysis
+        # 3. Fundamental Analysis
         render_fundamentals_page(pdf, ticker)
         
-        # 3. Leading Indicators
-        render_leading_indicators(pdf, ticker)
+        # 4. Relative Strength Analysis
+        render_rs_analysis(pdf, ticker)
         
-        # 4. Lagging Indicators
-        render_lagging_indicators(pdf, ticker)
+        # 5. Technical Indicators (New Order)
+        # Order: EMA -> BB -> Supertrend -> MACD -> Vol Squeeze -> RSI-Vol
+        render_technical_indicators(pdf, ticker)
     
     print(f"\n{'='*60}")
     print(f"Report generated successfully: {report_filename}")
