@@ -219,13 +219,16 @@ def render_styled_table_page(pdf, df, title, col_formats=None):
         pdf.savefig(fig)
         plt.close(fig)
 
-def run_weekly_analysis(include_deepdive=False):
+def run_weekly_analysis(include_deepdive=False, output_dir=None):
     print("Starting Weekly Analysis Report Generation...")
     
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     
-    # Define output directory (batch_reports/reports)
-    output_dir = os.path.join(os.path.dirname(__file__), '..', 'reports')
+    # Define output directory
+    if output_dir is None:
+        # Default: batch_reports/reports
+        output_dir = os.path.join(os.path.dirname(__file__), '..', 'reports')
+        
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         
@@ -459,6 +462,11 @@ def run_weekly_analysis(include_deepdive=False):
             print("\n[Section 4] Individual Deepdives skipped (include_deepdive=False).")
                 
     print(f"\nReport generated successfully: {report_filename}")
+    
+    return {
+        'report_path': report_filename,
+        'final_stock_list': final_stock_list
+    }
 
 if __name__ == "__main__":
-    run_weekly_analysis(True)
+    run_weekly_analysis(False)
