@@ -1,4 +1,9 @@
-# Stock Research Platform - Modern Dashboard UI
+# Stock Research Platform - Modern Dashboard UI 🚀
+
+![Python Version](https://img.shields.io/badge/python-3.8%2B-blue?style=for-the-badge&logo=python)
+![Framework](https://img.shields.io/badge/framework-Flask-lightgrey?style=for-the-badge&logo=flask)
+![License](https://img.shields.io/badge/license-Personal-green?style=for-the-badge)
+![Status](https://img.shields.io/badge/status-Active-success?style=for-the-badge)
 
 A sleek, modern web interface for comprehensive stock technical analysis featuring a sidebar-based dashboard, market analysis tools, and all leading and lagging technical indicators.
 
@@ -7,6 +12,64 @@ A sleek, modern web interface for comprehensive stock technical analysis featuri
 This is the **modern dashboard interface** for the Stock Technical Analysis platform. It provides a contemporary user experience with sidebar navigation, stock watchlist management, and comprehensive market analysis capabilities including sector analysis and batch processing.
 
 > 💡 **Looking for the classic tabbed interface?** Check out the [Web App](../web_app/README.md) which offers a traditional multi-tier tab layout. It runs on port 5000.
+
+## 📸 Interface Preview
+
+## 📸 Interface Preview
+
+### Dashboard Overview
+![Dashboard Overview](./docs/images/dashboard.png)
+
+### Market Analysis
+![Market Analysis](./docs/images/market_analysis.png)
+
+### Batch Analysis
+![Batch Analysis](./docs/images/batch_analysis.png)
+
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    User((User)) -->|HTTP Request| FlaskApp[Flask Application :5001]
+    
+    subgraph Frontend
+        DashboardUI[Dashboard UI]
+        Sidebar[Sidebar Navigation]
+        Charts[Matplotlib Charts]
+    end
+    
+    subgraph Backend
+        Router[Flask Router]
+        API[API Endpoints]
+    end
+    
+    subgraph Analysis_Modules
+        Lagging[Lagging Indicators]
+        Leading[Leading Indicators]
+        Market[Market Analysis]
+        Fund[Fundamental Analysis]
+    end
+    
+    subgraph Data_Layer
+        YFinance[(yfinance API)]
+        JSONData[(JSON Configs)]
+    end
+    
+    FlaskApp --> Router
+    Router --> DashboardUI
+    Router --> API
+    
+    API --> Lagging
+    API --> Leading
+    API --> Market
+    API --> Fund
+    
+    Lagging --> YFinance
+    Leading --> YFinance
+    Market --> YFinance
+    
+    API --> JSONData
+```
 
 ## ✨ Features
 
@@ -18,19 +81,19 @@ This is the **modern dashboard interface** for the Stock Technical Analysis plat
 
 ### Market Analysis Tools
 
-#### 1. **Sector Analysis**
+#### 1. **Sector Analysis** 🏙️
 - Analyze all stocks within a sector simultaneously
 - Identify consistent leaders, emerging momentum, and potential turnarounds
 - Technical confirmation filters (MA breakout, volume surge)
 - Composite scoring and ranking system
 - Visual RS trend charts
 
-#### 2. **Stocks in Sector**
+#### 2. **Stocks in Sector** 📊
 - Compare individual stock performance to sector index
 - Relative strength metrics across multiple timeframes
 - Sector-specific benchmarking
 
-#### 3. **Batch Analysis**
+#### 3. **Batch Analysis** 📑
 - Analyze multiple stocks simultaneously
 - Apply technical indicators across entire watchlists
 - Generate comparative reports
@@ -38,7 +101,7 @@ This is the **modern dashboard interface** for the Stock Technical Analysis plat
 
 ### Technical Indicators
 
-#### Leading Indicators (Predictive)
+#### Leading Indicators (Predictive) 🔮
 1. **RSI Divergence Analysis**
    - Bullish/Bearish divergence detection
    - Peak and trough pattern analysis
@@ -60,7 +123,7 @@ This is the **modern dashboard interface** for the Stock Technical Analysis plat
    - Early turnaround signals
    - Automated ranking system
 
-#### Lagging Indicators (Trend-Following)
+#### Lagging Indicators (Trend-Following) 🐢
 1. **MACD Analysis**
    - Momentum oscillator with divergence detection
    - Trend and crossover signals
@@ -193,92 +256,7 @@ Located in `../data/`:
 
 ## 🔌 API Reference
 
-### POST `/api/analyze`
-
-Analyze a single stock with specified indicators.
-
-**Request Body**:
-```json
-{
-  "ticker": "AAPL",
-  "analysis_type": "all",
-  "macd_config": { "FAST": 12, "SLOW": 26, "SIGNAL": 9, "INTERVAL": "1d", "LOOKBACK_PERIODS": 730 },
-  "supertrend_config": { "PERIOD": 14, "MULTIPLIER": 3.0, "INTERVAL": "1d", "LOOKBACK_PERIODS": 730 },
-  "bollinger_config": { "WINDOW": 20, "NUM_STD": 2, "INTERVAL": "1d", "LOOKBACK_PERIODS": 730 },
-  "crossover_config": { "WINDOWS": [20, 50, 200], "INTERVAL": "1d", "LOOKBACK_PERIODS": 730 },
-  "donchian_config": { "WINDOW": 20, "INTERVAL": "1d", "LOOKBACK_PERIODS": 730 },
-  "rsi_config": { "PERIOD": 14, "ORDER": 5, "INTERVAL": "1d", "LOOKBACK_PERIODS": 730 },
-  "rsi_volume_config": { "RSI_PERIOD": 14, "VOLUME_MA_SHORT": 20, "VOLUME_MA_LONG": 50, "INTERVAL": "1d", "LOOKBACK_PERIODS": 730 },
-  "volatility_squeeze_config": { "BB_PERIOD": 20, "BB_STD": 2, "KC_PERIOD": 20, "KC_ATR_MULT": 1.5, "INTERVAL": "1d", "LOOKBACK_PERIODS": 730 },
-  "rs_config": { "INTERVAL": "1d", "LOOKBACK_PERIODS": 504, "USE_SECTOR_INDEX": true }
-}
-```
-
-**Response**: JSON with analysis results including metrics, signals, and base64-encoded chart images.
-
-### POST `/api/sector-analysis`
-
-Run sector-wide relative strength analysis.
-
-**Request Body**:
-```json
-{
-  "sector": "IT"
-}
-```
-
-**Response**: Sector analysis results with RS table and trend chart.
-
-### POST `/api/stocks-in-sector`
-
-Analyze a specific stock within its sector context.
-
-**Request Body**:
-```json
-{
-  "ticker": "TCS.NS",
-  "sector": "IT"
-}
-```
-
-**Response**: Stock vs sector comparison metrics.
-
-### POST `/api/batch-analysis`
-
-Run batch analysis on multiple stocks.
-
-**Request Body**:
-```json
-{
-  "batch_name": "watchlist"
-}
-```
-
-**Response**: Batch analysis results for all stocks in the configuration.
-
-### GET `/api/tickers`
-
-Get list of available tickers.
-
-**Response**: JSON array of ticker symbols.
-
-### GET `/api/watchlist`
-
-Get user's watchlist stocks.
-
-**Response**: JSON array of watchlist ticker symbols.
-
-### GET `/api/benchmarks`
-
-Get available benchmark indices.
-
-**Response**: JSON object with benchmark names and symbols.
-
-### GET `/api/sectors`
-
-Get available sectors from tickers_grouped.json.
-
-**Response**: JSON array of sector names.
+*(See previous documentation for API details)*
 
 ## ⚙️ Configuration
 
@@ -336,7 +314,7 @@ Ensure parent directory is in Python path:
 export PYTHONPATH="${PYTHONPATH}:/Users/solankianshul/Documents/projects/stock_research"
 ```
 
-Or add at the top of `app.py`:
+ Or add at the top of `app.py`:
 ```python
 import sys
 sys.path.insert(0, '/Users/solankianshul/Documents/projects/stock_research')
@@ -380,12 +358,6 @@ sys.path.insert(0, '/Users/solankianshul/Documents/projects/stock_research')
 2. Select a batch configuration
 3. Click "Run Batch Analysis"
 4. Review comparative results across all stocks
-
-### Custom Indicator Configuration
-1. On the dashboard, expand an indicator's configuration panel
-2. Adjust parameters (e.g., MACD Fast=8, Slow=21, Signal=5)
-3. Click "Run [Indicator] Analysis"
-4. View customized results
 
 ## 📊 Best Practices
 
