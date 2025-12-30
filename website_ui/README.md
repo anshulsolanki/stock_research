@@ -11,20 +11,27 @@ A sleek, modern web interface for comprehensive stock technical analysis featuri
 
 This is the **modern dashboard interface** for the Stock Technical Analysis platform. It provides a contemporary user experience with sidebar navigation, stock watchlist management, and comprehensive market analysis capabilities including sector analysis and batch processing.
 
-> 💡 **Looking for the classic tabbed interface?** Check out the [Web App](../web_app/README.md) which offers a traditional multi-tier tab layout. It runs on port 5000.
-
-## 📸 Interface Preview
-
-## 📸 Interface Preview
+> 💡 **Looking for the classic tabbed interface?** Check out the [Web App](../web_app/README.md) which offers a traditional multi-tier tab layout. It runs on port 5000. No active development is being done on this interface. For latest use the [Modern Dashboard UI](../website_ui/README.md).
 
 ### Dashboard Overview
-![Dashboard Overview](./docs/images/dashboard.png)
+![Dashboard Overview](docs/images/dashboard.png)
+
+### 🔬 Stock Deepdive Analysis
+
+**Leading Indicators (RSI Divergence)**
+![Leading Indicator](docs/images/leading_indicator.png)
+
+**Lagging Indicators (MACD)**
+![Lagging Indicator](docs/images/lagging_indicator.png)
+
+**Fundamental Analysis**
+![Fundamental Analysis](docs/images/fundamental_analysis.png)
 
 ### Market Analysis
-![Market Analysis](./docs/images/market_analysis.png)
+![Market Analysis](docs/images/market_analysis.png)
 
 ### Batch Analysis
-![Batch Analysis](./docs/images/batch_analysis.png)
+![Batch Analysis](docs/images/batch_analysis.png)
 
 ## 🏗️ System Architecture
 
