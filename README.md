@@ -1,23 +1,57 @@
 # Stock Research & Technical Analysis
 
-A comprehensive Python-based stock technical analysis toolkit featuring multiple indicators, relative strength analysis, and an integrated web application for interactive visualization and analysis.
+![Python Version](https://img.shields.io/badge/python-3.8%2B-blue?style=for-the-badge&logo=python)
+![License](https://img.shields.io/badge/license-Personal-green?style=for-the-badge)
+![Status](https://img.shields.io/badge/status-Active-success?style=for-the-badge)
+![Framework](https://img.shields.io/badge/framework-Flask-lightgrey?style=for-the-badge&logo=flask)
+
+A comprehensive Python-based stock technical analysis toolkit featuring multiple indicators, relative strength analysis, fundamental analysis, automated reporting, and an integrated web application for interactive visualization.
 
 > 📱 **Quick Start**: Jump straight to the [Web Application](#-web-application) section to start analyzing stocks with an interactive UI!
 
 ## 📊 Overview
 
-This project provides a complete suite of technical analysis tools organized into four main components:
+This project provides a complete suite of technical and fundamental analysis tools organized into five main components:
 
-1. **Lagging Indicator Analysis** - Trend-following and momentum indicators
-2. **Leading Indicator Analysis** - Divergence-based predictive signals
-3. **Market Analysis** - Sector analysis, batch analysis, and relative strength tools
-4. **Web Interfaces** - Two Flask-based UIs (classic and modern dashboard)
+1.  **⚡️ Lagging Indicator Analysis** - Trend-following and momentum indicators
+2.  **🔮 Leading Indicator Analysis** - Divergence-based predictive signals
+3.  **🏙️ Market Analysis** - Sector analysis, batch analysis, and relative strength tools
+4.  **🏢 Fundamental Analysis** - Financial health, growth trends, and valuation metrics
+5.  **📑 Automated Reporting** - PDF report generation for weekly analysis and deep dives
+6.  **🌐 Web Interfaces** - Two Flask-based UIs (classic and modern dashboard)
+
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    Data[(Yahoo Finance Data)] --> Analysis[Analysis Modules]
+    
+    subgraph Analysis [Analysis Logic]
+        Lagging[Lagging Indicators]
+        Leading[Leading Indicators]
+        Market[Market Analysis]
+        Fund[Fundamental Analysis]
+    end
+    
+    Analysis --> WebUI[Web Interface]
+    Analysis --> PDF[Automated Reports]
+    
+    subgraph WebUI [Web Application]
+        Dashboard[Modern Dashboard]
+        Classic[Classic App]
+    end
+    
+    subgraph PDF [Reporting]
+        Weekly[Weekly Orchestrator]
+        StockReport[Detailed Stock Report]
+    end
+```
 
 ## 🌐 Web Interfaces
 
 **The easiest way to use this project is through one of the two web interfaces!**
 
-### Option 1: Modern Dashboard UI (Recommended)
+### Option 1: Modern Dashboard UI (Recommended) 🌟
 
 A sleek, modern interface with sidebar navigation and comprehensive market analysis.
 
@@ -31,12 +65,12 @@ python app.py
 ```
 
 **Features:**
-- **Modern dashboard layout**: Sidebar with stock watchlist
-- **Market Analysis**: Sector analysis, stocks in sector, batch analysis
-- **All indicators**: Leading and lagging indicators with RS analysis
-- **Multiple timeframes**: 1d, 1wk, 1mo, 1h, 15m
-- **Real-time charts**: Auto-generated visualizations
-- **Support for global markets**: US stocks, NSE, BSE
+- ✅ **Modern dashboard layout**: Sidebar with stock watchlist
+- ✅ **Market Analysis**: Sector analysis, stocks in sector, batch analysis
+- ✅ **All indicators**: Leading and lagging indicators with RS analysis
+- ✅ **Multiple timeframes**: 1d, 1wk, 1mo, 1h, 15m
+- ✅ **Real-time charts**: Auto-generated visualizations
+- ✅ **Support for global markets**: US stocks, NSE, BSE
 
 ### Option 2: Classic Web App
 
@@ -51,17 +85,9 @@ python app.py
 # Navigate to http://127.0.0.1:5000
 ```
 
-**Features:**
-- **Two-tier tab interface**: Organized by Lagging/Leading indicators
-- **7 Technical Indicators**: All accessible from one place
-- **Configurable parameters**: Customize each indicator
-- **Multiple timeframes**: 1d, 1wk, 1mo, 1h, 15m
-- **Real-time charts**: Auto-generated visualizations
-- **Support for global markets**: US stocks, NSE, BSE
-
 ## 📈 Technical Indicators
 
-### Lagging Indicators (Trend-Following)
+### Lagging Indicators (Trend-Following) 🐢
 
 Located in `lagging_indicator_analysis/`
 
@@ -95,7 +121,7 @@ Located in `lagging_indicator_analysis/`
 - **Signals**: Upper/Lower channel breakouts
 - **Use Case**: Breakout trading and channel-based entries
 
-### Leading Indicators (Predictive)
+### Leading Indicators (Predictive) 🐇
 
 Located in `leading_indicator_analysis/`
 
@@ -127,7 +153,20 @@ Located in `leading_indicator_analysis/`
   - Automated ranking system
 - **Use Case**: Compare stocks within sectors, identify relative winners
 
-### Market Analysis Tools
+## 🏢 Fundamental Analysis
+
+Located in `fundamental_analysis/`
+
+#### Core Analysis
+- **File**: [`fundamental_analysis.py`](./fundamental_analysis/fundamental_analysis.py)
+- **Type**: Financial health and growth analysis
+- **Features**:
+  - 📊 **4-Year Trends**: Revenue, Profit, ROE, EPS growth (1Y vs 3Y CAGR)
+  - 📉 **6-Quarter Trends**: Quarter-over-quarter growth analysis
+  - 💰 **Valuation**: PE Ratio comparison vs Industry averages
+- **Use Case**: Validate technical setups with fundamental strength
+
+## 📊 Market Analysis Tools
 
 Located in `market_analysis/`
 
@@ -158,6 +197,20 @@ Located in `market_analysis/`
   - Generate comparative reports
 - **Use Case**: Screen and compare multiple stocks efficiently
 
+## 📑 Automated Reporting
+
+Located in `batch_reports/`
+
+#### Weekly Analysis Orchestrator
+- **File**: [`run_weekly_orchestrator.py`](./batch_reports/scripts/run_weekly_orchestrator.py)
+- **Function**: End-to-end automation for weekly market review
+- **Workflow**:
+  1. 📂 Creates a dated folder for the current week
+  2. 🔍 Runs `weekly_analysis.py` to identify top picks
+  3. 📝 Generates detailed PDF reports for identified picks
+  4. 📋 Generates detailed PDF reports for your batch watchlist
+- **Output**: Comprehensive PDF reports saved in `batch_reports/reports/<date>/`
+
 ## 🚀 Installation
 
 ### Prerequisites
@@ -167,45 +220,34 @@ Python 3.8 or higher
 
 ### Install Dependencies
 ```bash
-pip install pandas numpy yfinance matplotlib scipy flask
+pip install pandas numpy yfinance matplotlib scipy flask reportlab
 ```
 
-Or create a `requirements.txt`:
-```txt
-pandas
-numpy
-yfinance
-matplotlib
-scipy
-flask
-```
-
-Then install:
+Or using requirements.txt:
 ```bash
 pip install -r requirements.txt
 ```
 
 ## 💻 Usage
 
-### Option 1: Modern Dashboard UI (Recommended)
+### Web Interfaces (Recommended)
+See [Modern Dashboard UI](./website_ui/README.md) or [Classic Web App](./web_app/README.md).
+
+### Automated Weekly Reports
+Generate a full set of reports for the week:
 ```bash
-cd website_ui
-python app.py
+python batch_reports/scripts/run_weekly_orchestrator.py
 ```
-Then navigate to `http://127.0.0.1:5001` in your browser.
 
-**See [Website UI README](./website_ui/README.md) for detailed usage instructions.**
+### Standalone Python Scripts
 
-### Option 2: Classic Web App
-```bash
-cd web_app
-python app.py
+**Fundamental Analysis:**
+```python
+from fundamental_analysis.fundamental_analysis import analyze_revenue_growth_4y
+print(analyze_revenue_growth_4y("AAPL"))
 ```
-Then navigate to `http://127.0.0.1:5000` in your browser.
 
-**See [Web App README](./web_app/README.md) for detailed usage instructions.**
-
-### Option 2: Standalone Python Scripts
+**Technical Analysis:**
 ```bash
 # MACD Analysis
 python lagging_indicator_analysis/macd_analysis.py
@@ -213,49 +255,7 @@ python lagging_indicator_analysis/macd_analysis.py
 # Supertrend Analysis  
 python lagging_indicator_analysis/supertrend_analysis.py
 
-# Bollinger Bands
-python lagging_indicator_analysis/bollinger_band_analysis.py
-
-# Crossover Analysis
-python lagging_indicator_analysis/crossover_analysis.py
-
-# Donchian Channels
-python lagging_indicator_analysis/donchian_channel_analysis.py
-
-# RSI Divergence
-python leading_indicator_analysis/rsi_divergence_analysis.py
-
-# RSI-Volume Divergence
-python leading_indicator_analysis/rsi_volume_divergence.py
-
-# Volatility Squeeze
-python leading_indicator_analysis/volatility_squeeze_analysis.py
-
-# Relative Strength Analysis
-python leading_indicator_analysis/rs_analysis.py
-
-# Sector Analysis
-python market_analysis/sector_analysis.py
-
-# Batch Analysis
-python market_analysis/batch_analysis.py
-```
-
-### Option 3: Import as Module
-```python
-from lagging_indicator_analysis.macd_analysis import run_analysis as run_macd
-
-# Configure and run
-config = {
-    'FAST': 12,
-    'SLOW': 26,
-    'SIGNAL': 9,
-    'INTERVAL': '1d',
-    'LOOKBACK_PERIODS': 730
-}
-
-results = run_macd(ticker="AAPL", config=config)
-print(results)
+# ... (other indicators)
 ```
 
 ## 📁 Project Structure
@@ -263,137 +263,28 @@ print(results)
 ```
 stock_research/
 ├── README.md                          # This file - Project overview
+├── batch_reports/                     # Automated PDF reporting
+│   ├── reports/                       # Generated report output
+│   └── scripts/                       # Orchestration scripts
+│       ├── run_weekly_orchestrator.py # Main automation entry point
+│       ├── stock_detailed_report.py   # Individual PDF generator
+│       └── weekly_analysis.py         # Weekly market screening
+├── fundamental_analysis/              # Fundamental health metrics
+│   └── fundamental_analysis.py        # Growth & valuation logic
 ├── lagging_indicator_analysis/        # Trend-following indicators
-│   ├── macd_analysis.py               # MACD
-│   ├── supertrend_analysis.py         # Supertrend
-│   ├── bollinger_band_analysis.py     # Bollinger Bands
-│   ├── crossover_analysis.py          # EMA Crossover
-│   └── donchian_channel_analysis.py   # Donchian Channels
 ├── leading_indicator_analysis/        # Predictive indicators
-│   ├── rsi_divergence_analysis.py     # RSI Divergence
-│   ├── rsi_volume_divergence.py       # RSI-Volume Divergence
-│   ├── volatility_squeeze_analysis.py # Volatility Squeeze
-│   └── rs_analysis.py                 # Relative Strength Analysis
 ├── market_analysis/                   # Market-wide analysis tools
-│   ├── sector_analysis.py             # Sector RS analysis
-│   ├── stock_in_sector_analysis.py    # Stock vs sector comparison
-│   └── batch_analysis.py              # Multi-stock batch analysis
 ├── web_app/                           # Classic Flask web application
-│   ├── README.md                      # Web app documentation
-│   ├── app.py                         # Flask backend (port 5000)
-│   ├── verify_api.py                  # API testing utility
-│   ├── templates/
-│   │   └── index.html                 # Web UI
-│   └── static/
-│       ├── style.css                  # Styling
-│       └── script.js                  # Frontend logic
 ├── website_ui/                        # Modern dashboard web interface
-│   ├── README.md                      # Website UI documentation
-│   ├── app.py                         # Flask backend (port 5001)
-│   ├── templates/
-│   │   ├── base.html                  # Base layout with sidebar
-│   │   ├── dashboard.html             # Main analysis dashboard
-│   │   ├── market_analysis.html       # Market analysis page
-│   │   ├── batch_analysis.html        # Batch analysis page
-│   │   └── partials/                  # Reusable analysis panels
-│   └── static/
-│       ├── style.css                  # Modern styling
-│       └── script.js                  # Dashboard logic
 ├── data/
 │   ├── tickers_list.json              # Stock ticker lists
 │   ├── tickers_grouped.json           # Sector-grouped tickers
 │   ├── tickers_batch_analysis.json    # Batch analysis configs
 │   └── watchlist.json                 # User watchlist
 ├── docs/
-│   └── todo.txt                       # Project roadmap
+├── experiments_space/                 # Experimental strategies
 └── stock_analysis.py                  # Legacy analysis script
 ```
-
-## 🎯 Use Cases & Trading Strategies
-
-### 1. Trend Following
-**Indicators**: MACD, Supertrend, EMA Crossover  
-**Strategy**: Enter on Golden Cross, exit on Death Cross, confirm with MACD crossover
-
-### 2. Breakout Trading
-**Indicators**: Donchian Channels, Bollinger Bands  
-**Strategy**: Enter on upper channel breakout with volume confirmation
-
-### 3. Mean Reversion
-**Indicators**: Bollinger Bands, RSI  
-**Strategy**: Buy at lower band with bullish RSI divergence
-
-### 4. Multi-Indicator Confluence
-**Indicators**: All indicators  
-**Strategy**: Wait for 3+ indicators to align before entering
-
-### 5. Early Reversal Detection
-**Indicators**: RSI Divergence, RSI-Volume Divergence  
-**Strategy**: Enter early on divergence signals before trend change
-
-### 6. Relative Strength Stock Selection
-**Tool**: RS Analysis  
-**Strategy**: Select top RS stocks from sector, then apply technical analysis
-
-## 🔧 Configuration
-
-Each analysis module accepts a configuration dictionary. Example:
-
-```python
-# MACD Configuration
-macd_config = {
-    'FAST': 12,           # Fast EMA period
-    'SLOW': 26,           # Slow EMA period
-    'SIGNAL': 9,          # Signal line period
-    'INTERVAL': '1d',     # Data interval (1d, 1wk, 1mo, 1h, 15m)
-    'LOOKBACK_PERIODS': 730  # Days of historical data
-}
-
-# Supertrend Configuration
-supertrend_config = {
-    'PERIOD': 14,         # ATR period
-    'MULTIPLIER': 3.0,    # ATR multiplier
-    'INTERVAL': '1d',
-    'LOOKBACK_PERIODS': 730
-}
-
-# Bollinger Bands Configuration
-bollinger_config = {
-    'WINDOW': 20,         # Moving average window
-    'NUM_STD': 2,         # Number of standard deviations
-    'INTERVAL': '1d',
-    'LOOKBACK_PERIODS': 730
-}
-```
-
-See [Web App README](./web_app/README.md) for complete configuration reference.
-
-## 📊 Data Source
-
-- **Provider**: Yahoo Finance (via `yfinance` library)
-- **Coverage**: Global stocks, indices, ETFs, cryptocurrencies
-- **Intervals**: 1m, 2m, 5m, 15m, 30m, 1h, 1d, 1wk, 1mo
-- **Historical Data**: Up to several years depending on interval
-
-## 🛠️ Technical Stack
-
-- **Language**: Python 3.8+
-- **Web Framework**: Flask
-- **Data Processing**: Pandas, NumPy
-- **Visualization**: Matplotlib
-- **Market Data**: yfinance
-- **Signal Detection**: SciPy
-- **Frontend**: HTML, CSS, JavaScript
-
-## 🤝 Contributing
-
-Contributions are welcome! Areas for improvement:
-- Additional technical indicators
-- Backtesting framework
-- Portfolio analysis
-- Real-time alerts
-- Mobile app
-- Database integration
 
 ## ⚠️ Disclaimer
 
@@ -405,17 +296,12 @@ Contributions are welcome! Areas for improvement:
 - Always do your own research
 - Consult a financial advisor before trading
 
-## 📧 Contact
-
-For questions, issues, or suggestions, please open an issue on GitHub.
-
 ## 📝 License
 
 For personal use only.
 
 ---
+Made with ❤️ for stock market enthusiasts and technical analysts
 
-**Last Updated**: December 2024  
-**Version**: 2.0
-
-**Made with ❤️ for stock market enthusiasts and technical analysts**
+**Last Updated**: December 2025  
+**Version**: 2.1
