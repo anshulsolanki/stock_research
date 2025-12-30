@@ -1,0 +1,79 @@
+This is a comprehensive technical and fundamental analysis of United Breweries Limited (UBL.NS). As a positional trader, I will evaluate this through a risk-averse lens, focusing on trend confirmation rather than bottom-fishing.
+
+### Step 1: Audit the Data
+
+*   **Data Present:** Daily price charts (3-year), Long-term (4Y) and Short-term (6Q) fundamentals, Moving Averages (EMA 20, 50, 200), Relative Strength (RS) against the FMCG index, Bollinger Bands, Supertrend, MACD, Volatility Squeeze analysis, and RSI-Volume Divergence.
+*   **Data Missing:** Weekly/Monthly timeframes (essential for high-conviction positional trades to filter daily "noise"), sector peer comparison, and delivery volume percentage data.
+*   **Confidence Level:** **High.** The report provides a multi-factor technical suite and fundamental context, allowing for a robust assessment of the current trend and momentum.
+
+---
+
+### Step 2: Analyze the Setup
+
+**Price Structure & Trend:**
+The stock is in a **Strong <b><font color='#c0392b'>Downtrend</font></b>**. Price action is characterized by a series of lower highs and lower lows since the peak in early 2025 (~INR 2200). It is currently trading significantly below its 200-day EMA (INR 1849), which is the "line in the sand" for long-term health. The Supertrend is firmly in a "Sell" configuration.
+
+**Momentum & Relative Strength:**
+*   **RS Score:** At 44.6, the stock is underperforming its benchmark (^CNXFMCG). While a "Turnaround" is technically detected based on the 1M RS vs. 3M RS, this is a leading indicator that hasn't been confirmed by price.
+*   **MACD:** Showing "<b><font color='#27ae60'>Bullish</font></b> Strengthening," but this is occurring deep below the zero line. This usually indicates a relief rally or a slowing of the decline, rather than a trend reversal.
+*   **RSI:** At 35.16, the stock is near oversold territory but lacks the "thrust" required for a positional entry.
+
+**Fundamentals:**
+The fundamental picture is mixed. While 1Y revenue growth is positive (9.10%), the short-term metrics show a massive 71% drop in EPS QoQ. This likely explains the aggressive selling seen on the charts over the last two quarters.
+
+---
+
+### Step 3: Formulate the Recommendation
+
+**Should you enter now? NO.**
+
+**Rationale:**
+As a positional trader, the goal is to capture the "meat" of a trend. Currently, UBL is "falling knife" territory. Entering now is an attempt to predict a bottom rather than reacting to a confirmed trend change. The EMA crossover (20 < 50 < 200) is bearish, and the stock is underperforming its sector. We need to see a "basing" pattern or a breakout above key moving averages to manage risk effectively.
+
+#### **Conditional Plan (The "Watchlist" Strategy):**
+UBL is a high-quality name, and the "Turnaround Detected" signal suggests we should keep it on our radar. We will wait for a change in character.
+
+*   **Condition to Buy:** A daily close above the EMA 50 with a concurrent RSI move above 50. This would signal that the medium-term momentum has shifted from bearish to neutral/bullish.
+*   **Entry Price (Trigger):** INR 1725.00 (This clears the current EMA 50 resistance and recent minor swing highs).
+*   **<b><font color='#c0392b'>Stop Loss</font></b>:** INR 1575.00 (Below the recent psychological support and lower Bollinger Band).
+*   **<b><font color='#27ae60'>Take Profit</font></b>:** INR 1850.00 (Initial target at the EMA 200, representing a ~7.2% gain. If it clears this level, the secondary target is INR 1980).
+
+**Risk Note:** Beer/Alcohol stocks often face seasonal volatility and regulatory headlines. Monitor the FMCG sector strength; if the sector continues to lag, even a technical breakout in UBL may lack follow-through.
+
+# News & Analyst Targets
+As a stock research analyst, I have compiled the following report on **United Breweries Limited (UBL)** based on market data and news for the week of **December 22-28, 2025**.
+
+### **1) Latest News for UBL (India) - Week of Dec 22-28, 2025**
+*   **52-Week Low Performance:** The stock has been under significant pressure this week, touching a new 52-week low of **INR 1,670.00** (some intraday charts noted lows of INR 1,574-INR 1,613 earlier in the month). It continues to underperform the broader beverages sector and the benchmark Sensex.
+*   **Muted Financial Trends:** Recent quarterly data indicates a sharp decline in profitability. The company witnessed a **60.3% decline in Profit After Tax (PAT)** relative to previous four-quarter averages, and its PBDIT (Profit Before Depreciation, Interest, and Taxes) hit recent lows of approximately INR 129.68 crores.
+*   **Volume Challenges:** Despite being a market leader, UBL has seen its revenue growth lag behind sector peers, with a notable quarter-on-quarter revenue decline of 28.09% reported in its latest consolidated filings.
+
+### **2) Upgrade/Downgrade from Brokerages**
+The sentiment among major brokerages remains cautious to bearish as of late December 2025:
+*   **MarketsMojo:** Issued a **"SELL" rating** for UBL on **December 25, 2025**, citing continued underperformance and poor financial trends.
+*   **Motilal Oswal Financial Services:** Maintained its **"SELL" rating** this month, keeping its target in the range of INR 1,650-INR 1,800, emphasizing slow volume recovery in key markets.
+*   **ICICI Securities:** Maintains an **"ADD" rating** with a more optimistic view on long-term premiumization, despite near-term headwinds.
+
+### **3) Other News Impacting UBL (Direct/Indirect)**
+*   **Festive Season Surge:** The alcoholic beverage (Alco-Bev) sector in India is anticipating a **15-20% growth in the December 2025 quarter** due to high demand during the Christmas and New Year period. This festive tailwind is expected to boost top-line performance for the beer segment.
+*   **Premiumization Trend:** There is a structural shift in India toward "Premium and Super Premium" categories. While UBL is leveraging this with brands like *Kingfisher Ultra* and *Heineken*, intense competition from homegrown craft gins and single malts is indirectly fragmenting the urban consumer's wallet share.
+*   **Regulatory Updates:** State excise departments in Telangana and Noida (NCR) reported record-breaking liquor sales in late 2025, which provides a positive volume outlook for UBL's regional distribution in these high-consumption hubs.
+
+### **4) Analyst Targets for UBL (December 2025)**
+
+The following table summarizes the latest targets and recommendations from the analyst community:
+
+| Brokerage / Source | Recommendation | Target Price (INR) | Date (Dec 2025) |
+| :--- | :--- | :--- | :--- |
+| **ICICI Securities** | ADD | INR 2,300 | Dec 2025 Update |
+| **Trendlyne Consensus** | HOLD (Avg) | INR 2,164.67 | Dec 26, 2025 |
+| **Motilal Oswal** | SELL | INR 1,800 | Dec 2025 |
+| **Dailybulls Research** | <b><font color='#c0392b'>Bearish</font></b> (Short-term) | INR 1,623 (Support) | Dec 27, 2025 |
+| **MarketsMojo** | SELL | N/A | Dec 25, 2025 |
+| **SharePriceTarget.com**| Neutral | INR 2,000 - INR 2,300 | Projected End-2025 |
+
+***
+
+**Analyst Note:** While UBL is trading near historical support levels and valuation appears "cheap" on an intrinsic basis (some models suggest a fair value above INR 3,000), technical indicators show a strong downward momentum. Investors are advised to watch for a volume-backed reversal or positive management guidance in the upcoming Q3 FY26 results (expected Feb 2026). 
+
+*(Note: If you were referring to United Bank Limited (UBL) of Pakistan, that stock is currently trading near its all-time high of ~412 PKR with a "Strong Buy" consensus target of ~413-495 PKR.)*

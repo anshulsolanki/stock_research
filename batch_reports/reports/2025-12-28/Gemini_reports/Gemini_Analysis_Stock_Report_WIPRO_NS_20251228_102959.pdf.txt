@@ -1,0 +1,64 @@
+This analysis is conducted from the perspective of a positional equity trader, focusing on the intermediate-term horizon (1-4 months).
+
+### Step 1: Audit the Data
+*   **Data Present:** Daily price charts (3-year), Long-term (4-year) and Short-term (6-quarter) fundamental metrics, Relative Strength (RS) vs. Benchmark (^CNXIT), EMA Crossovers (20, 50, 200), Bollinger Bands, Supertrend, MACD, Volatility Squeeze/ATR analysis, and RSI-Volume Divergence.
+*   **Data Missing:** Weekly/Monthly timeframes (essential for confirming primary trends), specific sector-wide performance heatmaps, and institutional delivery percentages.
+*   **Confidence Level:** **High**. The report provides a robust multi-factor technical framework (momentum, volatility, and trend) combined with fundamental context.
+
+### Step 2: Analyze the Setup
+WIPRO.NS is currently exhibiting an **Emerging Leader** profile with a technical breakout from a low-volatility base.
+
+1.  **Trend Structure:** The stock is in a confirmed "Short-term <b><font color='#27ae60'>Uptrend</font></b>." The EMA 20 (260.90) is above the EMA 50 and EMA 200. Crucially, a "Golden Cross" (EMA 50 crossing above EMA 200) is currently in progress, which is a classic signal for intermediate-term trend reversals.
+2.  **Volatility & Momentum:** The stock has recently emerged from a **Volatility Squeeze** (identified in Page 15). The breakout is supported by a Supertrend "Buy" signal (Page 10) and a bullish MACD, though MACD histogram bars are beginning to shorten, suggesting a potential minor consolidation before the next leg up.
+3.  **Relative Strength:** The stock shows improving RS against the IT Sector index (^CNXIT), with a recent jump in the RS Score above 50. This indicates Wipro is starting to outperform its peers.
+4.  **Fundamentals:** While short-term Net Income growth is slightly negative (-2.53% QoQ), the long-term EPS is accelerating (20.31% 1Y growth). This suggests the technical breakout is supported by an underlying earnings recovery.
+
+### Step 3: Formulate the Recommendation
+
+**Recommendation: YES (Enter Position)**
+
+The confluence of the Volatility Squeeze breakout and the Golden Cross (EMA 50/200) creates a high-probability entry for a positional trade. The risk-to-reward ratio is favorable at current levels.
+
+*   **Entry Price:** INR 266.30 (Market price) or on any minor dip toward INR 263.00.
+*   **<b><font color='#c0392b'>Stop Loss</font></b>:** INR 253.00 (Positioned below the EMA 50/200 cluster and the Supertrend support).
+*   **<b><font color='#27ae60'>Take Profit</font></b>:** INR 298.00 - INR 305.00 (This targets the major historical resistance zone seen in early 2025, offering a potential upside of ~12-14%).
+
+**Risk Management Note:** The MACD momentum is flagged as "weakening." While this is common during a breakout retest, ensure the stop loss is strictly adhered to if the price closes below the EMA 50 (INR 254.25) on a daily basis.
+
+# News & Analyst Targets
+As a stock research analyst, I have compiled the latest news, brokerage actions, and broader market impacts for **Wipro Limited** for the current week ending December 28, 2025.
+
+### 1) Latest News for Wipro (Dec 21 - Dec 28, 2025)
+*   **ESOP Allotment:** On December 22, 2025, Wipro's board approved the allotment of equity shares under various Employee Stock Option Plans (ESOP) and Employee Stock Purchase Schemes (ESPS). This is a routine corporate action but reflects the ongoing talent retention and incentive programs within the firm.
+*   **Subsidiary Consolidation:** News surfaced this week regarding the finalization of the merger between **Wipro Digital Inc.** (a wholly-owned subsidiary) and **Harman Connected Services, Inc.** (a step-down subsidiary). This move is aimed at streamlining Wipro's digital engineering services and reducing operational overhead.
+*   **AI Integration Milestone:** Wipro continues to push its "AI-first" strategy. Recent reports highlight that the company has transitioned nearly 50% of its AI Proof-of-Concepts (PoCs) into full production environments, signaling better monetization of AI investments compared to the previous year.
+
+### 2) Brokerage Upgrades and Downgrades
+*   **MarketsMOJO (Rating: HOLD):** Updated on December 27, 2025, the firm maintains a "Hold" rating. While it acknowledges Wipro's high management efficiency (ROE of 16.48%) and attractive valuation, it points to a "flat" financial trend and modest operating profit growth over the last five years as reasons for caution.
+*   **CLSA (Rating: HOLD/UNDERPERFORM):** CLSA remains cautious on Wipro, citing concerns over capital allocation and revenue growth trailing its top-tier Indian IT peers. They recently lowered their target multiple for the stock.
+*   **ICICI Securities (Rating: REDUCE):** The brokerage has maintained a bearish outlook this week, citing expensive valuations relative to growth prospects, maintaining a "Reduce" stance.
+
+### 3) Indirect News & Macro Impacts
+*   **H-1B Visa Reform:** A significant headwind emerged this week as the U.S. administration (Trump) announced a shift from the random lottery system to a **wage-based selection process** for H-1B visas, prioritizing higher-paid, high-skilled workers. This is expected to increase operational costs for Indian IT firms. However, Wipro's HR head recently noted that **80% of their U.S. workforce is now local**, which may provide a buffer compared to peers.
+*   **U.S. Fed Rate Cut Hopes:** Earlier in the week (Dec 22), IT stocks rallied up to 4% following soft U.S. labor data, which bolstered hopes for a Fed rate cut. Lower interest rates generally lead to increased discretionary tech spending by U.S. clients, which is a positive catalyst for Wipro.
+*   **AI Spending Fatigue:** There are emerging questions among global analysts regarding the "ROI on AI." Large hyperscalers (Google, Microsoft) are facing scrutiny over their massive Capex, which indirectly affects the consulting and implementation pipeline for service providers like Wipro.
+
+### 4) Analyst Targets and Brokerage Ratings
+The following table summarizes the most recent targets and ratings for Wipro as of late December 2025:
+
+| Brokerage / Analyst | Rating | Price Target (INR) | Outlook / Remarks |
+| :--- | :--- | :--- | :--- |
+| **Motilal Oswal** | Neutral | INR 490 | High target; based on 2026-27 earnings recovery. |
+| **Investec** | Buy | INR 285 | <b><font color='#27ae60'>Bullish</font></b> on deal pipeline and AI monetization. |
+| **Antique Stock Broking** | Hold | INR 285 | Revenue growth trails peers; margins under pressure. |
+| **Nuvama Wealth** | Hold | INR 270 | Cautious on discretionary spending recovery. |
+| **Trendlyne Consensus** | Hold | INR 255.47 | Average target across 11 key analysts. |
+| **CLSA** | Hold | INR 236 | Concerns over inferior capital allocation policy. |
+| **ICICI Securities** | Reduce | INR 230 | High valuation relative to modest growth. |
+| **MarketsMOJO** | Hold | - | High quality/efficiency but slow technical momentum. |
+
+**Current Market Price (LTP):** Approximately **INR 266.30** (as of Dec 26, 2025 close).
+
+***
+
+**Analyst Summary:** Wipro is currently in a "wait-and-watch" phase. While its internal AI initiatives and localization in the U.S. are structural positives, the immediate sentiment is weighed down by global macro uncertainty and new H-1B visa hurdles. Most analysts recommend holding the stock until clearer revenue growth emerges in the Q3 results (scheduled for mid-January 2026).
