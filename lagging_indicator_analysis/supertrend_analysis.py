@@ -129,7 +129,7 @@ SUPERTREND_CONFIG = {
     # Best: 365 (1 year for trends), 180 (6 months for recent analysis), 730 (2 years for long-term)
     'LOOKBACK_PERIODS': 730,  # 2 year
     
-    'DEFAULT_TICKER': 'HDFCBANK.NS',
+    'DEFAULT_TICKER': 'DABUR.NS',
     'BATCH_RELATIVE_PATH': '../data/tickers_list.json',
     'RUN_BATCH': False
 }
@@ -312,6 +312,7 @@ def run_analysis(ticker=None, show_plot=True, config=None):
             - 'last_trend': int, 1 for uptrend, -1 for downtrend
             - 'last_price': float, latest closing price
             - 'last_date': datetime, date of latest data
+            - 'signal_date': datetime, date of the last trend change (signal)
             - 'supertrend_value': float, latest supertrend value
             - 'status': str, "UPTREND (Buy)" or "DOWNTREND (Sell)"
             - 'figure': matplotlib.figure.Figure, plot figure object
@@ -400,10 +401,20 @@ def analyze_batch(json_file):
             df = calculate_supertrend(df)
             
             # Extract latest signal
+            # Extract latest signal
             last_trend = df['Trend'].iloc[-1]
-            last_signal_date = df.index[-1]
+            last_date = df.index[-1]
             status = "UPTREND (Buy)" if last_trend == 1 else "DOWNTREND (Sell)"
-            print(f"  Current Status: {status} as of {last_signal_date.date()}")
+            
+            # Find the date of the last trend change (Signal Date)
+            trend_changes = df[df['Trend'] != df['Trend'].shift(1)]
+            if not trend_changes.empty:
+                last_signal_date = trend_changes.index[-1]
+            else:
+                last_signal_date = df.index[0]
+                
+            print(f"  Current Status: {status} as of {last_date.date()}")
+            print(f"  Signal identified on: {last_signal_date.date()}")
                 
         except Exception as e:
             print(f"  Error analyzing {ticker}: {e}")
@@ -430,6 +441,6 @@ if __name__ == "__main__":
             print(f"Status: {results['status']}")
             print(f"Last Price: {results['last_price']:.2f}")
             print(f"Supertrend: {results['supertrend_value']:.2f}")
-            print(f"Date: {results['last_date'].date()}")
+            print(f"Signal Date: {results['signal_date'].date()}")
         else:
             print(f"Error: {results['error']}")

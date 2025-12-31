@@ -174,6 +174,7 @@ def analyze():
                 'supertrend_value': round(supertrend_results['supertrend_value'], 2),
                 'status': supertrend_results['status'],
                 'last_date': supertrend_results['last_date'].strftime('%Y-%m-%d'),
+                'signal_date': supertrend_results['signal_date'].strftime('%Y-%m-%d'),
                 'chart_image': supertrend_image_base64
             }
         

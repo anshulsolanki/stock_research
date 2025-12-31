@@ -351,6 +351,7 @@ function displayResults(data, analysisType) {
         document.getElementById('supertrendPrice').textContent = supertrend.last_price.toFixed(2);
         document.getElementById('supertrendValue').textContent = supertrend.supertrend_value.toFixed(2);
         document.getElementById('supertrendDate').textContent = supertrend.last_date;
+        document.getElementById('supertrendSignalDate').textContent = supertrend.signal_date;
 
         const statusCard = document.getElementById('supertrendStatusCard');
         statusCard.classList.remove('uptrend', 'downtrend');
@@ -358,7 +359,7 @@ function displayResults(data, analysisType) {
 
         const summarySection = document.getElementById('supertrendSummarySection');
         const summaryDiv = document.getElementById('supertrendSummary');
-        summaryDiv.textContent = `Status: ${supertrend.status}\nLast Price: ${supertrend.last_price.toFixed(2)}\nSupertrend: ${supertrend.supertrend_value.toFixed(2)}\nDate: ${supertrend.last_date}`;
+        summaryDiv.textContent = `Status: ${supertrend.status}\nLast Price: ${supertrend.last_price.toFixed(2)}\nSupertrend: ${supertrend.supertrend_value.toFixed(2)}\nSignal Date: ${supertrend.signal_date}\nDate: ${supertrend.last_date}`;
         summarySection.style.display = 'block';
 
         document.getElementById('supertrendChartImage').src = 'data:image/png;base64,' + supertrend.chart_image;
