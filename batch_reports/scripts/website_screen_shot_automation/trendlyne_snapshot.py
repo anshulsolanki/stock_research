@@ -57,24 +57,30 @@ def login_if_needed(page):
         # We continue even if login fails, as some public info might still be accessible
         pass
 
-def get_trendlyne_snapshots(stock_name="Dabur", output_dir=".", headless=True):
+def get_trendlyne_snapshots(stock_name="Dabur", output_dir=".", headless=True, save_to_file=True):
     """
     Automates taking screenshots of Trendlyne for a specific stock.
     1. Log in if needed.
     2. Searches for the stock.
     3. Takes a screenshot of the Main Page.
     4. Navigates to the Forecaster Page and takes a screenshot.
+    
+    Returns:
+        List of dictionaries with keys: 'name', 'type' ('file' or 'memory'), 'content' (path or bytes)
     """
     
-    # Ensure output directory exists
-    if not os.path.isabs(output_dir):
-        output_dir = os.path.join(SCRIPT_DIR, output_dir)
-        
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    # Ensure output directory exists (only if saving to file)
+    if save_to_file:
+        if not os.path.isabs(output_dir):
+            output_dir = os.path.join(SCRIPT_DIR, output_dir)
+            
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
     # Path for persistent browser data
     user_data_dir = os.path.join(SCRIPT_DIR, "trendlyne_user_data")
+
+    generated_files = []
 
     with sync_playwright() as p:
         # Launch persistent context to reuse sessions
@@ -119,9 +125,15 @@ def get_trendlyne_snapshots(stock_name="Dabur", output_dir=".", headless=True):
             print(f"Arrived at: {main_url}")
             
             # User requested "content that appears in full screen mode" -> Viewport screenshot
-            main_screenshot_path = os.path.join(output_dir, f"{stock_name}_main.png")
-            page.screenshot(path=main_screenshot_path)
-            print(f"Saved Main Page screenshot to: {main_screenshot_path}")
+            if save_to_file:
+                main_screenshot_path = os.path.join(output_dir, f"{stock_name}_main.png")
+                page.screenshot(path=main_screenshot_path)
+                print(f"Saved Main Page screenshot to: {main_screenshot_path}")
+                generated_files.append({'name': f"{stock_name}_main", 'type': 'file', 'content': main_screenshot_path})
+            else:
+                img_bytes = page.screenshot()
+                generated_files.append({'name': f"{stock_name}_main", 'type': 'memory', 'content': img_bytes})
+                print(f"Captured Main Page screenshot (in memory)")
             
             # 2. Forecaster Page Screenshot
             # Construct URL: https://trendlyne.com/equity/303/DABUR/dabur-india-ltd/
@@ -134,18 +146,30 @@ def get_trendlyne_snapshots(stock_name="Dabur", output_dir=".", headless=True):
                 page.goto(forecaster_url)
                 page.wait_for_load_state("networkidle")
                 
-                forecaster_screenshot_path = os.path.join(output_dir, f"{stock_name}_forecaster.png")
-                page.screenshot(path=forecaster_screenshot_path)
-                print(f"Saved Forecaster Page screenshot to: {forecaster_screenshot_path}")
+                if save_to_file:
+                    forecaster_screenshot_path = os.path.join(output_dir, f"{stock_name}_forecaster.png")
+                    page.screenshot(path=forecaster_screenshot_path)
+                    print(f"Saved Forecaster Page screenshot to: {forecaster_screenshot_path}")
+                    generated_files.append({'name': f"{stock_name}_forecaster", 'type': 'file', 'content': forecaster_screenshot_path})
+                else:
+                    img_bytes = page.screenshot()
+                    generated_files.append({'name': f"{stock_name}_forecaster", 'type': 'memory', 'content': img_bytes})
+                    print(f"Captured Forecaster Page screenshot (in memory)")
             else:
                 print("Could not construct Forecaster URL (unexpected URL format).")
                 
         except Exception as e:
             print(f"An error occurred: {e}")
-            # Take a debug screenshot if something fails
-            page.screenshot(path="debug_error.png")
+            if save_to_file:
+                # Take a debug screenshot if something fails
+                debug_path = os.path.join(output_dir, "debug_error.png")
+                page.screenshot(path=debug_path)
+            # We don't append debug screenshot to generated_files as we probably don't want it in the report
+
         finally:
             context.close()
+            
+    return generated_files
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Take screenshots from Trendlyne for a given stock.")

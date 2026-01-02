@@ -12,11 +12,13 @@ their outputs into PDF. No new analysis logic is implemented here.
 import sys
 import os
 import datetime
+import datetime
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import pandas as pd
 import numpy as np
 import yfinance as yf
+import io
 
 # Add parent directories to path
 # Scripts are now in batch_reports/scripts, so we need to go up two levels to reach root
@@ -36,6 +38,7 @@ try:
     import rsi_volume_divergence
     import volatility_squeeze_analysis
     import rs_analysis
+    from website_screen_shot_automation.trendlyne_snapshot import get_trendlyne_snapshots
 except ImportError as e:
     print(f"Error importing modules: {e}")
     sys.exit(1)
@@ -684,6 +687,66 @@ def render_technical_indicators(pdf, ticker):
     render_rsi_volume_divergence(pdf, ticker)
 
 
+
+def render_trendlyne_snapshots(pdf, ticker):
+    """
+    Captures and renders Trendlyne screenshots.
+    This uses browser automation and might take some time.
+    """
+    try:
+        print("  Running Trendlyne Snapshot Automation...")
+        # Clean ticker for Trendlyne search (remove .NS/.BO and common suffixes)
+        search_name = ticker.replace('.NS', '').replace('.BO', '')
+        
+        # Use a temporary output directory or valid location
+        # The script defaults to its own dir, but returns absolute paths.
+        # We can pass "." to let it manage files, or handle it here.
+        # Let's just pass the ticker name.
+        
+        # Call with save_to_file=False to get bytes in memory
+        snapshots = get_trendlyne_snapshots(stock_name=search_name, headless=True, save_to_file=False)
+        
+        if not snapshots:
+            print("    No Trendlyne snapshots generated.")
+            return
+
+        print(f"    Captured {len(snapshots)} snapshots.")
+        
+        for item in snapshots:
+            try:
+                img = None
+                if item.get('type') == 'memory':
+                     # Create image from bytes
+                     img_bytes = item.get('content')
+                     if img_bytes:
+                         img = plt.imread(io.BytesIO(img_bytes), format='png')
+                elif item.get('type') == 'file':
+                    img_path = item.get('content')
+                    if os.path.exists(img_path):
+                        img = plt.imread(img_path)
+                    else:
+                        print(f"    Image file not found: {img_path}")
+                
+                if img is not None:
+                    fig, ax = plt.subplots(figsize=(11, 8.5)) # Standard landscape
+                    ax.imshow(img)
+                    ax.axis('off')
+                    
+                    # Extract type from filename for title
+                    filename = item.get('name', 'Snapshot')
+                    title = f"Trendlyne Snapshot - {filename}"
+                    ax.set_title(title, fontsize=12, color='#475569', pad=5)
+                    
+                    plt.tight_layout()
+                    pdf.savefig(fig)
+                    plt.close(fig)
+            except Exception as e:
+                print(f"    Error rendering image {item.get('name')}: {e}")
+
+    except Exception as e:
+        print(f"    Error in Trendlyne Snapshots: {e}")
+
+
 # Backward compatibility wrappers (if needed)
 def render_leading_indicators(pdf, ticker):
     """Warning: Deprecated. Use render_technical_indicators instead."""
@@ -742,6 +805,9 @@ def generate_stock_report(ticker, output_dir=None):
         # 5. Technical Indicators (New Order)
         # Order: EMA -> BB -> Supertrend -> MACD -> Vol Squeeze -> RSI-Vol
         render_technical_indicators(pdf, ticker)
+        
+        # 6. Trendlyne Snapshots
+        render_trendlyne_snapshots(pdf, ticker)
     
     print(f"\n{'='*60}")
     print(f"Report generated successfully: {report_filename}")
