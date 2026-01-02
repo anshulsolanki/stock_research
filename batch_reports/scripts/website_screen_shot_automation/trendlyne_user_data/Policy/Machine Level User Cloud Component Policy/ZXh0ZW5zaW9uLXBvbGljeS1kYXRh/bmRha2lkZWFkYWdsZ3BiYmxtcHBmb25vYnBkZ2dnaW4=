@@ -1,0 +1,13 @@
+{
+   "PrintDeployServerHosts":{
+      "Value":[
+         "printdeploy-papercut.corp.goog"
+      ]
+   },
+   "AccessiblePrintDeployTLSPort":{
+      "Value":443
+   },
+   "StrictSSLCheckingEnabled":{
+      "Value":true
+   }
+}
