@@ -7,6 +7,8 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
+import yfinance as yf
+from datetime import datetime, timedelta
 
 # Add parent directory to path to import analysis modules
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lagging_indicator_analysis'))
@@ -83,6 +85,34 @@ def get_watchlist():
         return jsonify({'success': False, 'error': str(e)})
 
 
+def fetch_stock_data(ticker, interval='1d', lookback_days=730):
+    """
+    Fetch stock data once for reuse across multiple analysis functions.
+    """
+    try:
+        # Calculate start date
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=lookback_days)
+        
+        # Adjust for 15m limit (max 60 days)
+        if interval == '15m':
+            actual_lookback = min(lookback_days, 59)
+            start_date = end_date - timedelta(days=actual_lookback)
+            
+        print(f"Fetching shared data for {ticker} ({interval}, {lookback_days}d)...")
+        df = yf.download(ticker, start=start_date, end=end_date, interval=interval, 
+                         progress=False, auto_adjust=False, multi_level_index=False)
+        
+        if df.empty:
+            print(f"Warning: Fetched empty dataframe for {ticker}")
+            return None
+            
+        return df
+    except Exception as e:
+        print(f"Error fetching shared data: {e}")
+        return None
+
+
 @app.route('/analyze', methods=['POST'])
 def analyze():
     """Analyze a stock ticker using MACD, Supertrend, and Bollinger Bands"""
@@ -110,9 +140,42 @@ def analyze():
             'analysis_type': analysis_type
         }
 
+        # Centralized Data Fetching
+        # Determine interval and lookback based on configs
+        # Default to 1d and 2 years (730 days)
+        interval = '1d'
+        lookback_period = 730
+        
+        # Check if any config initiates a different interval (simple check)
+        # We prioritize the interval found in the first active config
+        if macd_config.get('INTERVAL'): interval = macd_config['INTERVAL']
+        elif supertrend_config.get('INTERVAL'): interval = supertrend_config['INTERVAL']
+        elif bollinger_config.get('INTERVAL'): interval = bollinger_config['INTERVAL']
+        elif rsi_config.get('INTERVAL'): interval = rsi_config['INTERVAL']
+        
+        # Fetch shared dataframe
+        df = fetch_stock_data(ticker, interval=interval, lookback_days=lookback_period)
+        
+        # Fetch benchmark data if RS analysis is requested
+        df_benchmark = None
+        if analysis_type in ['all', 'rs']:
+            benchmark = rs_config.get('BENCHMARK_TICKER')
+            if not benchmark and use_sector_index:
+                # Need to detect benchmark or sector
+                # Since we can't easily auto-detect here without repeating logic, 
+                # we rely on rs_analysis to auto-detect if we pass None, BUT
+                # to optimize, we should try to fetch it here if we can.
+                # For now, let's let rs_analysis fetch it if we can't easily determine it,
+                # OR we accept that we only optimize the main ticker data here.
+                # However, if benchmark IS provided:
+                pass
+            
+            if benchmark:
+                df_benchmark = fetch_stock_data(benchmark, interval=interval, lookback_days=lookback_period)
+
         # Run MACD analysis
         if analysis_type in ['all', 'macd']:
-            macd_results = run_macd_analysis(ticker=ticker, show_plot=False, config=macd_config)
+            macd_results = run_macd_analysis(ticker=ticker, show_plot=False, config=macd_config, df=df)
             
             if not macd_results['success']:
                 return jsonify(macd_results)
@@ -152,7 +215,7 @@ def analyze():
         
         # Run Supertrend analysis
         if analysis_type in ['all', 'supertrend']:
-            supertrend_results = run_supertrend_analysis(ticker=ticker, show_plot=False, config=supertrend_config)
+            supertrend_results = run_supertrend_analysis(ticker=ticker, show_plot=False, config=supertrend_config, df=df)
             
             if not supertrend_results['success']:
                 return jsonify(supertrend_results)
@@ -180,7 +243,7 @@ def analyze():
         
         # Run Bollinger Band analysis
         if analysis_type in ['all', 'bollinger']:
-            bollinger_results = run_bollinger_analysis(ticker=ticker, show_plot=False, config=bollinger_config)
+            bollinger_results = run_bollinger_analysis(ticker=ticker, show_plot=False, config=bollinger_config, df=df)
             
             if not bollinger_results['success']:
                 return jsonify(bollinger_results)
@@ -222,7 +285,7 @@ def analyze():
 
         # Run Crossover Analysis
         if analysis_type in ['all', 'crossover']:
-            crossover_results = run_crossover_analysis(ticker=ticker, show_plot=False, config=crossover_config)
+            crossover_results = run_crossover_analysis(ticker=ticker, show_plot=False, config=crossover_config, df=df)
             
             if not crossover_results['success']:
                 return jsonify(crossover_results)
@@ -255,7 +318,7 @@ def analyze():
 
         # Run Donchian Channel Analysis
         if analysis_type in ['all', 'donchian']:
-            donchian_results = run_donchian_analysis(ticker=ticker, show_plot=False, config=donchian_config)
+            donchian_results = run_donchian_analysis(ticker=ticker, show_plot=False, config=donchian_config, df=df)
             
             if not donchian_results['success']:
                 return jsonify(donchian_results)
@@ -297,7 +360,7 @@ def analyze():
         # Run RSI Divergence Analysis
         if analysis_type in ['all', 'rsi']:
             print(f"Starting RSI analysis for {ticker}...")
-            rsi_results = run_rsi_analysis(ticker=ticker, show_plot=False, config=rsi_config)
+            rsi_results = run_rsi_analysis(ticker=ticker, show_plot=False, config=rsi_config, df=df)
             print(f"RSI analysis result: {rsi_results['success']}")
             
             if not rsi_results['success']:
@@ -335,7 +398,7 @@ def analyze():
         # Run RSI-Volume Divergence Analysis
         if analysis_type in ['all', 'rsi_volume']:
             print(f"Starting RSI-Volume analysis for {ticker}...")
-            rsi_volume_results = run_rsi_volume_analysis(ticker=ticker, show_plot=False, config=rsi_volume_config)
+            rsi_volume_results = run_rsi_volume_analysis(ticker=ticker, show_plot=False, config=rsi_volume_config, df=df)
             print(f"RSI-Volume analysis result: {rsi_volume_results['success']}")
             
             if not rsi_volume_results['success']:
@@ -405,7 +468,7 @@ def analyze():
         # Run Volatility Squeeze Analysis
         if analysis_type in ['all', 'volatility_squeeze']:
             print(f"Starting Volatility Squeeze analysis for {ticker}...")
-            volatility_squeeze_results = run_volatility_squeeze_analysis(ticker=ticker, show_plot=False, config=volatility_squeeze_config)
+            volatility_squeeze_results = run_volatility_squeeze_analysis(ticker=ticker, show_plot=False, config=volatility_squeeze_config, df=df)
             print(f"Volatility Squeeze analysis result: {volatility_squeeze_results['success']}")
             
             if not volatility_squeeze_results['success']:
@@ -455,7 +518,9 @@ def analyze():
                 benchmark=benchmark,
                 show_plot=False, 
                 config=rs_config, 
-                use_sector_index=use_sector_index
+                use_sector_index=use_sector_index,
+                df=df,
+                df_benchmark=df_benchmark
             )
             print(f"RS analysis result: {rs_results['success']}")
             

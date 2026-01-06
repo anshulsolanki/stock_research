@@ -890,7 +890,7 @@ def plot_rs_analysis(df_stock, df_benchmark, ticker, benchmark, rs_ratios, class
     return fig
 
 
-def run_analysis(ticker, benchmark=None, show_plot=True, config=None, use_sector_index=False):
+def run_analysis(ticker, benchmark=None, show_plot=True, config=None, use_sector_index=False, df=None, df_benchmark=None):
     """
     Main orchestration function for RS analysis.
     
@@ -907,6 +907,10 @@ def run_analysis(ticker, benchmark=None, show_plot=True, config=None, use_sector
     use_sector_index : bool, optional
         If True, attempts to use sector-specific index from tickers_grouped.json
         If False or not found, uses broad market index (default: False)
+    df : pd.DataFrame, optional
+        Pre-fetched stock data. If None, fetches new data.
+    df_benchmark : pd.DataFrame, optional
+        Pre-fetched benchmark data. If None, fetches new data.
         
     Returns:
     --------
@@ -947,11 +951,19 @@ def run_analysis(ticker, benchmark=None, show_plot=True, config=None, use_sector
     
     try:
         # Fetch data for stock and benchmark
-        print(f"Fetching data for {ticker}...")
-        df_stock = fetch_data(ticker, config)
+        if df is not None:
+            df_stock = df.copy()
+        else:
+            print(f"Fetching data for {ticker}...")
+            df_stock = fetch_data(ticker, config)
         
-        print(f"Fetching data for {benchmark}...")
-        df_benchmark = fetch_data(benchmark, config)
+        if df_benchmark is not None:
+            df_benchmark_data = df_benchmark.copy()
+        else:
+            print(f"Fetching data for {benchmark}...")
+            df_benchmark_data = fetch_data(benchmark, config)
+            # Assign back to df_benchmark for clarity, though variable name change is fine
+            df_benchmark = df_benchmark_data
         
         # Calculate returns for both
         periods = config.get('TIMEFRAMES', RS_CONFIG['TIMEFRAMES'])

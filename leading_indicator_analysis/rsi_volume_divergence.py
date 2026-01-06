@@ -566,7 +566,7 @@ def plot_rsi_volume_divergence(df, ticker, show_plot=True, config=None, bullish_
         
     return fig
 
-def run_analysis(ticker, show_plot=True, config=None):
+def run_analysis(ticker, show_plot=True, config=None, df=None):
     """
     Main analysis function that can be called from a GUI or other scripts.
     
@@ -574,6 +574,7 @@ def run_analysis(ticker, show_plot=True, config=None):
         ticker: Stock ticker symbol
         show_plot: If True, displays the plot. If False, just returns the figure.
         config: Optional dictionary to override default configuration
+        df: Optional pre-fetched DataFrame. If None, fetches new data.
     
     Returns:
         dict: Analysis results including divergences, early reversals, and figure
@@ -589,7 +590,11 @@ def run_analysis(ticker, show_plot=True, config=None):
             current_config.update(config)
 
         # Fetch and calculate
-        df = fetch_data(ticker, config=current_config)
+        if df is not None:
+             df = df.copy()
+        else:
+             df = fetch_data(ticker, config=current_config)
+             
         df = calculate_rsi(df, config=current_config)
         df = calculate_volume_ma(df, config=current_config)
         

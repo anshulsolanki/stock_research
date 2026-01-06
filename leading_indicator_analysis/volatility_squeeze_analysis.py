@@ -569,7 +569,7 @@ def plot_squeeze(df, ticker, signals, config=None):
     return fig
 
 
-def run_analysis(ticker, show_plot=True, config=None):
+def run_analysis(ticker, show_plot=True, config=None, df=None):
     """
     Main orchestration function for Volatility Squeeze analysis.
     
@@ -581,6 +581,8 @@ def run_analysis(ticker, show_plot=True, config=None):
         If True, displays the plot interactively. If False, returns figure for web app use.
     config : dict, optional
         Configuration dictionary to override defaults
+    df : pd.DataFrame, optional
+        Pre-fetched stock data. If None, fetches new data.
         
     Returns:
     --------
@@ -608,7 +610,10 @@ def run_analysis(ticker, show_plot=True, config=None):
     
     try:
         # Fetch data
-        df = fetch_data(ticker, config)
+        if df is not None:
+             df = df.copy()
+        else:
+             df = fetch_data(ticker, config)
         
         # Calculate indicators
         df = calculate_bollinger_bands(df, config)
