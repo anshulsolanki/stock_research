@@ -310,7 +310,7 @@ def plot_macd(df, ticker, show_plot=True, config=None):
     
     return fig
 
-def run_analysis(ticker, show_plot=True, config=None):
+def run_analysis(ticker, show_plot=True, config=None, df=None):
     """
     Main analysis function that can be called from a GUI or other scripts.
     
@@ -318,6 +318,7 @@ def run_analysis(ticker, show_plot=True, config=None):
         ticker: Stock ticker symbol
         show_plot: If True, displays the plot. If False, just returns the figure.
         config: Optional dictionary to override default configuration
+        df: Optional DataFrame (if provided, skips data fetching)
     
     Returns:
         dict: Analysis results containing:
@@ -335,8 +336,8 @@ def run_analysis(ticker, show_plot=True, config=None):
             - 'error': str, error message if analysis failed
     """
     # Set non-interactive backend when not showing plot (e.g., for Flask/web)
-    if not show_plot:
-        matplotlib.use('Agg', force=True)
+    # if not show_plot:
+    #     matplotlib.use('Agg', force=True)
     
     try:
         # Merge provided config with defaults
@@ -345,7 +346,9 @@ def run_analysis(ticker, show_plot=True, config=None):
             current_config.update(config)
 
         # Fetch and calculate
-        df = fetch_data(ticker, config=current_config)
+        if df is None:
+            df = fetch_data(ticker, config=current_config)
+        
         df = calculate_macd(df, config=current_config)
         analysis = analyze_macd(df)
         

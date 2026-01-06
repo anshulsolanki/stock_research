@@ -366,7 +366,7 @@ def plot_kalman(df, kalman_prices, ticker, trading_signal, config, show_plot=Tru
     
     return fig
 
-def run_analysis(ticker=None, show_plot=True, config=None):
+def run_analysis(ticker=None, show_plot=True, config=None, df=None):
     """
     Main analysis function for Kalman Filter.
     
@@ -374,6 +374,7 @@ def run_analysis(ticker=None, show_plot=True, config=None):
         ticker: Stock ticker symbol (if None, uses DEFAULT_TICKER)
         show_plot: If True, displays plot (Agg backend doesn't show, but flag maintained for API compatibility)
         config: Optional dictionary to override default configuration
+        df: Optional[pd.DataFrame], pre-loaded DataFrame to use instead of fetching data
     
     Returns:
         dict: Analysis results containing:
@@ -401,9 +402,11 @@ def run_analysis(ticker=None, show_plot=True, config=None):
     
     try:
         # Fetch data
-        df = fetch_data(ticker, 
-                       interval=current_config['INTERVAL'],
-                       lookback_periods=current_config['LOOKBACK_PERIODS'])
+        if df is None:
+            df = fetch_data(ticker, 
+                           interval=current_config['INTERVAL'],
+                           lookback_periods=current_config['LOOKBACK_PERIODS'])
+        # else: use provided df
         
         # Optimize or use default parameters
         if current_config.get('OPTIMIZE', True):

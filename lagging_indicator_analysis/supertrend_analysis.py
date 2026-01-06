@@ -294,9 +294,7 @@ def plot_supertrend(df, ticker, show_plot=True, config=None):
     
     return fig
 
-    return fig
-
-def run_analysis(ticker=None, show_plot=True, config=None):
+def run_analysis(ticker=None, show_plot=True, config=None, df=None):
     """
     Main analysis function that can be called from a GUI or other scripts.
     
@@ -304,6 +302,7 @@ def run_analysis(ticker=None, show_plot=True, config=None):
         ticker: Stock ticker symbol (if None, uses DEFAULT_TICKER from config)
         show_plot: If True, displays the plot. If False, just returns the figure.
         config: Optional dictionary to override default configuration
+        df: Optional DataFrame (if provided, skips data fetching)
     
     Returns:
         dict: Analysis results containing:
@@ -329,9 +328,12 @@ def run_analysis(ticker=None, show_plot=True, config=None):
     
     try:
         # Fetch and calculate
-        df = fetch_data(ticker, 
-                       interval=current_config['INTERVAL'], 
-                       lookback_periods=current_config['LOOKBACK_PERIODS'])
+        if df is None:
+            df = fetch_data(ticker, 
+                           interval=current_config['INTERVAL'], 
+                           lookback_periods=current_config['LOOKBACK_PERIODS'])
+        # else: use provided df (assuming it matches requirements)
+        
         df = calculate_supertrend(df, config=current_config)
         
         # Extract results

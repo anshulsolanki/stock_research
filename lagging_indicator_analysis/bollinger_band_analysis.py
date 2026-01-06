@@ -373,7 +373,7 @@ def plot_bollinger_bands(df, ticker, show_plot=True, config=None):
         
     return fig
 
-def run_analysis(ticker, show_plot=True, config=None):
+def run_analysis(ticker, show_plot=True, config=None, df=None):
     """
     Main analysis function that can be called from a GUI or other scripts.
     """
@@ -388,7 +388,9 @@ def run_analysis(ticker, show_plot=True, config=None):
             current_config.update(config)
 
         # Fetch and calculate
-        df = fetch_data(ticker, config=current_config)
+        if df is None:
+            df = fetch_data(ticker, config=current_config)
+            
         df = calculate_bollinger_bands(df, config=current_config)
         analysis = analyze_bollinger(df)
         

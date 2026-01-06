@@ -249,7 +249,7 @@ def plot_crossover(df, ticker, show_plot=True, config=None):
     plt.plot(df.index, df['Close'], label='Close Price', color='black', alpha=0.5)
     
     # Plot EMAs
-    colors = ['blue', 'orange', 'red', 'green', 'purple']
+    colors = ['green', 'blue', 'red', 'green', 'purple']
     for i, window in enumerate(windows):
         col_name = f'EMA_{window}'
         if col_name in df.columns:
@@ -273,7 +273,7 @@ def plot_crossover(df, ticker, show_plot=True, config=None):
         
     return fig
 
-def run_analysis(ticker, show_plot=True, config=None):
+def run_analysis(ticker, show_plot=True, config=None, df=None):
     """
     Main analysis function that can be called from a GUI or other scripts.
     """
@@ -288,7 +288,9 @@ def run_analysis(ticker, show_plot=True, config=None):
             current_config.update(config)
 
         # Fetch and calculate
-        df = fetch_data(ticker, config=current_config)
+        if df is None:
+            df = fetch_data(ticker, config=current_config)
+            
         df = calculate_emas(df, config=current_config)
         analysis = analyze_crossover(df)
         
