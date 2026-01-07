@@ -694,6 +694,58 @@ function displayResults(data, analysisType) {
             document.getElementById('rsChartImage').src = 'data:image/png;base64,' + rs.chart_image;
         }
     }
+
+    // ========== Multi-Timeframe Data ==========
+    if (data.multi_timeframe && (analysisType === 'all' || analysisType === 'multi_timeframe')) {
+        const multiTf = data.multi_timeframe;
+
+        // Show results section, hide loading
+        document.getElementById('multi_timeframe-loading').style.display = 'none';
+        document.getElementById('multi_timeframe-results').style.display = 'block';
+        document.getElementById('multi_timeframe-error').style.display = 'none';
+
+        // Populate Supertrend table
+        const supertrendBody = document.getElementById('supertrendMultiBody');
+        supertrendBody.innerHTML = '';
+        if (multiTf.supertrend_results) {
+            multiTf.supertrend_results.forEach(row => {
+                const tr = document.createElement('tr');
+                const statusClass = row.status && row.status.includes('UPTREND') ? 'bullish' :
+                    row.status && row.status.includes('DOWNTREND') ? 'bearish' : '';
+                tr.innerHTML = `
+                    <td><strong>${row.timeframe}</strong></td>
+                    <td class="${statusClass}">${row.status || '--'}</td>
+                    <td>${row.supertrend_value || '--'}</td>
+                    <td>${row.last_price || '--'}</td>
+                    <td>${row.signal_date || '--'}</td>
+                `;
+                supertrendBody.appendChild(tr);
+            });
+        }
+
+        // Populate MACD table
+        const macdBody = document.getElementById('macdMultiBody');
+        macdBody.innerHTML = '';
+        if (multiTf.macd_results) {
+            multiTf.macd_results.forEach(row => {
+                const tr = document.createElement('tr');
+                const trendClass = row.trend && row.trend.includes('Bullish') ? 'bullish' :
+                    row.trend && row.trend.includes('Bearish') ? 'bearish' : '';
+                tr.innerHTML = `
+                    <td><strong>${row.timeframe}</strong></td>
+                    <td class="${trendClass}">${row.trend || '--'}</td>
+                    <td>${row.momentum || '--'}</td>
+                    <td>${row.signal || '--'}</td>
+                `;
+                macdBody.appendChild(tr);
+            });
+        }
+
+        // Display candlestick chart
+        if (multiTf.chart_image) {
+            document.getElementById('multiTimeframeChartImage').src = 'data:image/png;base64,' + multiTf.chart_image;
+        }
+    }
 }
 
 function showError(message) {

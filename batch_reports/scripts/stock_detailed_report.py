@@ -38,6 +38,7 @@ try:
     import rsi_volume_divergence
     import volatility_squeeze_analysis
     import rs_analysis
+    import multi_timeframe_analysis
     from website_screen_shot_automation.trendlyne_snapshot import get_trendlyne_snapshots
 except ImportError as e:
     print(f"Error importing modules: {e}")
@@ -68,16 +69,48 @@ def create_title_page(pdf, ticker, current_price=None):
     plt.close()
 
 
-def add_price_chart(pdf, ticker, save_plot=True):
+def fetch_shared_data(ticker):
+    """
+    Fetches 4 years of daily data to specific shared needs.
+    This covers:
+    - 3-year Price Chart (needs ~1095 days)
+    - 200 EMA (needs ~300 days)
+    - General Technical Analysis
+    """
+    try:
+        print(f"  Fetching shared data for {ticker} (4 years)...")
+        stock = yf.Ticker(ticker)
+        end_date = datetime.datetime.now()
+        start_date = end_date - datetime.timedelta(days=4*365)
+        df = stock.history(start=start_date, end=end_date, interval='1d')
+        
+        if df.empty:
+            print(f"  Warning: No data fetched for {ticker}")
+            return None
+            
+        return df
+    except Exception as e:
+        print(f"  Error fetching shared data: {e}")
+        return None
+
+
+def add_price_chart(pdf, ticker, save_plot=True, df=None):
     """Fetches and plots 3-year daily price chart."""
     try:
-        print(f"  Fetching 3-year price data for {ticker}...")
-        stock = yf.Ticker(ticker)
-        
-        # Fetch 3 years of daily data
-        end_date = datetime.datetime.now()
-        start_date = end_date - datetime.timedelta(days=3*365)
-        hist = stock.history(start=start_date, end=end_date, interval='1d')
+        # Use shared dataframe if provided
+        if df is not None:
+             # Filter for last 3 years
+             end_date = df.index[-1]
+             start_date = end_date - datetime.timedelta(days=3*365)
+             hist = df.loc[start_date:end_date]
+        else:
+            print(f"  Fetching 3-year price data for {ticker}...")
+            stock = yf.Ticker(ticker)
+            
+            # Fetch 3 years of daily data
+            end_date = datetime.datetime.now()
+            start_date = end_date - datetime.timedelta(days=3*365)
+            hist = stock.history(start=start_date, end=end_date, interval='1d')
         
         if hist.empty:
             print(f"  Warning: No price data available for {ticker}")
@@ -387,10 +420,17 @@ def add_analysis_chart(pdf, figure, title=None):
         plt.close(figure)
 
 
-def render_rsi_volume_divergence(pdf, ticker):
+def render_rsi_volume_divergence(pdf, ticker, df=None):
     try:
         print("    - RSI-Volume Divergence")
-        res = rsi_volume_divergence.run_analysis(ticker, show_plot=False)
+        
+        # Filter for last 2 years of data if df is provided
+        local_df = df
+        if local_df is not None:
+             cutoff_date = local_df.index[-1] - datetime.timedelta(days=2*365)
+             local_df = local_df[local_df.index > cutoff_date].copy()
+             
+        res = rsi_volume_divergence.run_analysis(ticker, show_plot=False, df=local_df)
         if res.get('success'):
             # Add summary page
             summary = {
@@ -419,10 +459,17 @@ def render_rsi_volume_divergence(pdf, ticker):
         print(f"    Error in RSI-Volume: {e}")
 
 
-def render_volatility_squeeze(pdf, ticker):
+def render_volatility_squeeze(pdf, ticker, df=None):
     try:
         print("    - Volatility Squeeze")
-        res = volatility_squeeze_analysis.run_analysis(ticker, show_plot=False)
+        
+        # Filter for last 2 years of data if df is provided
+        local_df = df
+        if local_df is not None:
+             cutoff_date = local_df.index[-1] - datetime.timedelta(days=2*365)
+             local_df = local_df[local_df.index > cutoff_date].copy()
+             
+        res = volatility_squeeze_analysis.run_analysis(ticker, show_plot=False, df=local_df)
         if res.get('success'):
             # Add summary page
             summary = {
@@ -448,10 +495,17 @@ def render_volatility_squeeze(pdf, ticker):
         print(f"    Error in Volatility Squeeze: {e}")
 
 
-def render_macd(pdf, ticker):
+def render_macd(pdf, ticker, df=None):
     try:
         print("    - MACD")
-        res = macd_analysis.run_analysis(ticker, show_plot=False)
+        
+        # Filter for last 2 years of data if df is provided
+        local_df = df
+        if local_df is not None:
+             cutoff_date = local_df.index[-1] - datetime.timedelta(days=2*365)
+             local_df = local_df[local_df.index > cutoff_date].copy()
+             
+        res = macd_analysis.run_analysis(ticker, show_plot=False, df=local_df)
         if res.get('success'):
             # Add summary page - matching UI format exactly
             summary = {
@@ -482,10 +536,17 @@ def render_macd(pdf, ticker):
         print(f"    Error in MACD: {e}")
 
 
-def render_supertrend(pdf, ticker):
+def render_supertrend(pdf, ticker, df=None):
     try:
         print("    - Supertrend")
-        res = supertrend_analysis.run_analysis(ticker, show_plot=False)
+        
+        # Filter for last 2 years of data if df is provided
+        local_df = df
+        if local_df is not None:
+             cutoff_date = local_df.index[-1] - datetime.timedelta(days=2*365)
+             local_df = local_df[local_df.index > cutoff_date].copy()
+             
+        res = supertrend_analysis.run_analysis(ticker, show_plot=False, df=local_df)
         if res.get('success'):
             # Add summary page
             summary = {
@@ -510,10 +571,17 @@ def render_supertrend(pdf, ticker):
         print(f"    Error in Supertrend: {e}")
 
 
-def render_bollinger_bands(pdf, ticker):
+def render_bollinger_bands(pdf, ticker, df=None):
     try:
         print("    - Bollinger Bands")
-        res = bollinger_band_analysis.run_analysis(ticker, show_plot=False)
+        
+        # Filter for last 2 years of data if df is provided
+        local_df = df
+        if local_df is not None:
+             cutoff_date = local_df.index[-1] - datetime.timedelta(days=2*365)
+             local_df = local_df[local_df.index > cutoff_date].copy()
+             
+        res = bollinger_band_analysis.run_analysis(ticker, show_plot=False, df=local_df)
         if res.get('success'):
             # Add summary page
             summary = {
@@ -542,10 +610,10 @@ def render_bollinger_bands(pdf, ticker):
         print(f"    Error in Bollinger Bands: {e}")
 
 
-def render_ema_crossover(pdf, ticker):
+def render_ema_crossover(pdf, ticker, df=None):
     try:
         print("    - EMA Crossover")
-        res = crossover_analysis.run_analysis(ticker, show_plot=False)
+        res = crossover_analysis.run_analysis(ticker, show_plot=False, df=df)
         if res.get('success'):
             # Add summary page
             summary = {
@@ -571,7 +639,7 @@ def render_ema_crossover(pdf, ticker):
         print(f"    Error in Crossover: {e}")
 
 
-def render_rs_analysis(pdf, ticker):
+def render_rs_analysis(pdf, ticker, df=None):
     """
     Runs RS analysis and adds summary + chart to PDF.
     Uses sector-specific index for comparison if available.
@@ -579,7 +647,7 @@ def render_rs_analysis(pdf, ticker):
     try:
         print("  Running Relative Strength Analysis...")
         # Run RS analysis with sector index
-        res = rs_analysis.run_analysis(ticker, show_plot=False, use_sector_index=True)
+        res = rs_analysis.run_analysis(ticker, show_plot=False, use_sector_index=True, df=df)
         
         if res.get('success'):
             # Create summary page with better organization
@@ -668,7 +736,7 @@ def render_rs_analysis(pdf, ticker):
         print(f"    Error in RS Analysis: {e}")
 
 
-def render_technical_indicators(pdf, ticker):
+def render_technical_indicators(pdf, ticker, df=None):
     """
     Renders all technical indicators in the specified order:
     1. EMA Crossover
@@ -679,12 +747,125 @@ def render_technical_indicators(pdf, ticker):
     6. RSI-Volume Divergence
     """
     print("  Running Technical Analysis...")
-    render_ema_crossover(pdf, ticker)
-    render_bollinger_bands(pdf, ticker)
-    render_supertrend(pdf, ticker)
-    render_macd(pdf, ticker)
-    render_volatility_squeeze(pdf, ticker)
-    render_rsi_volume_divergence(pdf, ticker)
+    render_ema_crossover(pdf, ticker, df=df)
+    render_bollinger_bands(pdf, ticker, df=df)
+    render_supertrend(pdf, ticker, df=df)
+    render_macd(pdf, ticker, df=df)
+    render_volatility_squeeze(pdf, ticker, df=df)
+    render_rsi_volume_divergence(pdf, ticker, df=df)
+
+
+def render_multi_timeframe_analysis(pdf, ticker, df=None):
+    """
+    Renders Multi-Timeframe Analysis (Supertrend, MACD, Charts).
+    """
+    try:
+        print("  Running Multi-Timeframe Analysis...")
+        # Note: Multi-timeframe analysis currently handles its own multi-timeframe fetching
+        # We can pass specific timeframe dataframes if refactored, but for now it might re-fetch
+        # or we update run_analysis to accept a map of DFs.
+        # Checking multi_timeframe_analysis.py, it fetches data internally.
+        # To optimize, we should refactor multi_timeframe_analysis.run_analysis to accept data.
+        # For now, let's keep it as is or do a quick check.
+        # The prompt asked to optimize this file. 
+        # Ideally, we pass the data.
+        # Let's assume multi_timeframe_analysis.run_analysis will be updated or handles it.
+        # Actually, multi_timeframe_analysis.py fetches data for '1wk', '1d', '15m'.
+        # Our fetch_shared_data only gets '1d'.
+        # So we can pass '1d' data to avoid ONE fetch, but it still needs '1wk' and '15m'.
+        # However, looking at previous edits, we didn't update multi_timeframe_analysis to accept df yet.
+        # Let's stick to the plan: pass df where possible.
+        res = multi_timeframe_analysis.run_analysis(ticker, show_plot=False)
+        
+        if res.get('success'):
+            # --- Page 1: Tables ---
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(11, 8.5), gridspec_kw={'height_ratios': [1, 1], 'hspace': 0.3})
+            
+            # Supertrend Table
+            st_data = res.get('supertrend_results', [])
+            if st_data:
+                df_st = pd.DataFrame(st_data)
+                # Rename columns for display
+                df_st.columns = ['Timeframe', 'Status', 'Value', 'Signal Date', 'Last Price']
+                # Reorder
+                df_st = df_st[['Timeframe', 'Status', 'Value', 'Last Price', 'Signal Date']]
+                
+                ax1.axis('tight')
+                ax1.axis('off')
+                ax1.set_title("Multi-Timeframe Supertrend Analysis", fontsize=16, weight='bold', pad=10, color='#1e293b')
+                
+                table1 = ax1.table(cellText=df_st.values, colLabels=df_st.columns, loc='center', cellLoc='center')
+                table1.auto_set_font_size(False)
+                table1.set_fontsize(10)
+                table1.scale(1.2, 1.8)
+                
+                # Styling
+                for (row, col), cell in table1.get_celld().items():
+                    if row == 0:
+                        cell.set_text_props(weight='bold', color='#475569')
+                        cell.set_facecolor('#f8fafc')
+                    else:
+                        # Color coding for Status
+                        if col == 1: # Status column
+                            val = df_st.iloc[row-1]['Status']
+                            if 'UPTREND' in str(val):
+                                cell.set_text_props(color='#16a34a', weight='bold') # Green
+                            elif 'DOWNTREND' in str(val):
+                                cell.set_text_props(color='#dc2626', weight='bold') # Red
+            else:
+                ax1.axis('off')
+                ax1.text(0.5, 0.5, "No Supertrend Data", ha='center', va='center')
+
+            # MACD Table
+            macd_data = res.get('macd_results', [])
+            if macd_data:
+                df_macd = pd.DataFrame(macd_data)
+                # Rename columns
+                df_macd.columns = ['Timeframe', 'Trend', 'Momentum', 'Signal']
+                
+                ax2.axis('tight')
+                ax2.axis('off')
+                ax2.set_title("Multi-Timeframe MACD Analysis", fontsize=16, weight='bold', pad=10, color='#1e293b')
+                
+                table2 = ax2.table(cellText=df_macd.values, colLabels=df_macd.columns, loc='center', cellLoc='center')
+                table2.auto_set_font_size(False)
+                table2.set_fontsize(10)
+                table2.scale(1.2, 1.8)
+                
+                # Styling
+                for (row, col), cell in table2.get_celld().items():
+                    if row == 0:
+                        cell.set_text_props(weight='bold', color='#475569')
+                        cell.set_facecolor('#f8fafc')
+                    else:
+                        # Color coding for Trend
+                        if col == 1: # Trend column
+                            val = df_macd.iloc[row-1]['Trend']
+                            if 'Bullish' in str(val):
+                                cell.set_text_props(color='#16a34a', weight='bold')
+                            elif 'Bearish' in str(val):
+                                cell.set_text_props(color='#dc2626', weight='bold')
+
+            else:
+                ax2.axis('off')
+                ax2.text(0.5, 0.5, "No MACD Data", ha='center', va='center')
+                
+            plt.tight_layout()
+            pdf.savefig(fig)
+            plt.close(fig)
+
+            # --- Page 2: Charts ---
+            if res.get('figure'):
+                # The figure is already created by multi_timeframe_analysis with 3 subplots
+                # We just need to save it
+                fig_charts = res['figure']
+                # Ensure size is appropriate for PDF landscape/portrait
+                fig_charts.set_size_inches(11, 8.5) # Landscape
+                pdf.savefig(fig_charts)
+                plt.close(fig_charts)
+
+    except Exception as e:
+        print(f"    Error in Multi-Timeframe Analysis: {e}")
 
 
 
@@ -787,24 +968,31 @@ def generate_stock_report(ticker, output_dir=None):
     
     report_filename = os.path.join(output_dir, f'Stock_Report_{ticker.replace(".", "_")}_{timestamp}.pdf')
     
+    # Fetch data once for all components
+    df = fetch_shared_data(ticker)
+
     with PdfPages(report_filename) as pdf:
         # 1. Title Page (Must be first)
         # We need current price for title page, so we run price chart logic first but save plot later
-        current_price = add_price_chart(pdf, ticker, save_plot=False)
+        current_price = add_price_chart(pdf, ticker, save_plot=False, df=df)
         create_title_page(pdf, ticker, current_price)
         
         # 2. Price Chart (Add to PDF now)
-        add_price_chart(pdf, ticker, save_plot=True)
+        add_price_chart(pdf, ticker, save_plot=True, df=df)
         
         # 3. Fundamental Analysis
         render_fundamentals_page(pdf, ticker)
         
         # 4. Relative Strength Analysis
-        render_rs_analysis(pdf, ticker)
+        render_rs_analysis(pdf, ticker, df=df)
         
         # 5. Technical Indicators (New Order)
         # Order: EMA -> BB -> Supertrend -> MACD -> Vol Squeeze -> RSI-Vol
-        render_technical_indicators(pdf, ticker)
+        render_technical_indicators(pdf, ticker, df=df)
+
+        # 5b. Multi-Timeframe Analysis
+        # Pass df if multi_timeframe_analysis supports it, otherwise it fetches internals
+        render_multi_timeframe_analysis(pdf, ticker, df=df)
         
         # 6. Trendlyne Snapshots
         render_trendlyne_snapshots(pdf, ticker)

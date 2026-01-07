@@ -18,6 +18,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'fundamental_analy
 
 from macd_analysis import run_analysis as run_macd_analysis
 from supertrend_analysis import run_analysis as run_supertrend_analysis
+from multi_timeframe_analysis import run_analysis as run_multi_timeframe_analysis
 from bollinger_band_analysis import run_analysis as run_bollinger_analysis
 from crossover_analysis import run_analysis as run_crossover_analysis
 from donchian_channel_analysis import run_analysis as run_donchian_analysis
@@ -559,6 +560,33 @@ def analyze():
                 'trading_summary': rs_results['trading_summary'],
                 'signals': signals_formatted,
                 'chart_image': rs_image_base64
+            }
+        
+        # Run Multi-Timeframe Analysis
+        if analysis_type in ['all', 'multi_timeframe']:
+            print(f"Starting Multi-Timeframe analysis for {ticker}...")
+            multi_tf_results = run_multi_timeframe_analysis(ticker=ticker, show_plot=False)
+            print(f"Multi-Timeframe analysis result: {multi_tf_results['success']}")
+            
+            if not multi_tf_results['success']:
+                return jsonify(multi_tf_results)
+            
+            # Convert candlestick figure to base64 image
+            multi_tf_fig = multi_tf_results['figure']
+            multi_tf_buf = BytesIO()
+            multi_tf_fig.savefig(multi_tf_buf, format='png', dpi=100, bbox_inches='tight')
+            multi_tf_buf.seek(0)
+            multi_tf_image_base64 = base64.b64encode(multi_tf_buf.getvalue()).decode('utf-8')
+            multi_tf_buf.close()
+            print("Multi-Timeframe chart generated successfully")
+            
+            # Close the figure
+            plt.close(multi_tf_fig)
+            
+            response_data['multi_timeframe'] = {
+                'supertrend_results': multi_tf_results['supertrend_results'],
+                'macd_results': multi_tf_results['macd_results'],
+                'chart_image': multi_tf_image_base64
             }
         
         return jsonify(response_data)

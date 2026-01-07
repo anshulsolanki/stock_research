@@ -375,6 +375,15 @@ def calculate_rs_ratio(df_stock, df_benchmark, periods):
     df_stock = df_stock.copy()
     latest_rs = {}
     
+    # Normalize timezones to avoid mismatch errors
+    if df_stock.index.tz is not None:
+        df_stock.index = df_stock.index.tz_localize(None)
+        
+    # Create a copy of benchmark to avoid modifying original
+    df_benchmark_aligned = df_benchmark.copy()
+    if df_benchmark_aligned.index.tz is not None:
+        df_benchmark_aligned.index = df_benchmark_aligned.index.tz_localize(None)
+        
     # Align dataframes by common dates
     common_dates = df_stock.index.intersection(df_benchmark.index)
     df_stock = df_stock.loc[common_dates]

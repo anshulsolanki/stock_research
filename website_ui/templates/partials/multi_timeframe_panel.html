@@ -1,0 +1,63 @@
+<!-- Multi-Timeframe Analysis Panel -->
+<h2><i class="fas fa-layer-group"></i> Multi-Timeframe Analysis</h2>
+<p class="section-description">Consolidated view of Supertrend and MACD across Weekly, Daily, and 15-Minute timeframes
+</p>
+
+<div class="panel-actions" style="margin-bottom: 20px;">
+</div>
+
+<div id="multi_timeframe-loading" style="display: none; text-align: center; padding: 40px;">
+    <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #4CAF50;"></i>
+    <p style="margin-top: 20px;">Analyzing across timeframes...</p>
+</div>
+
+<div id="multi_timeframe-results" style="display: none;">
+    <!-- Supertrend Results Table -->
+    <div class="analysis-section" style="margin-bottom: 30px;">
+        <h3><i class="fas fa-chart-line"></i> Supertrend Analysis</h3>
+        <table class="analysis-table" id="supertrendMultiTable">
+            <thead>
+                <tr>
+                    <th>Timeframe</th>
+                    <th>Status</th>
+                    <th>Supertrend Value</th>
+                    <th>Last Price</th>
+                    <th>Signal Date</th>
+                </tr>
+            </thead>
+            <tbody id="supertrendMultiBody">
+                <!-- Populated by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- MACD Results Table -->
+    <div class="analysis-section" style="margin-bottom: 30px;">
+        <h3><i class="fas fa-wave-square"></i> MACD Analysis</h3>
+        <table class="analysis-table" id="macdMultiTable">
+            <thead>
+                <tr>
+                    <th>Timeframe</th>
+                    <th>Trend</th>
+                    <th>Momentum</th>
+                    <th>Signal</th>
+                </tr>
+            </thead>
+            <tbody id="macdMultiBody">
+                <!-- Populated by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Candlestick Chart -->
+    <div class="chart-container">
+        <h3><i class="fas fa-chart-bar"></i> Candlestick Charts with EMAs</h3>
+        <img id="multiTimeframeChartImage" src="" alt="Multi-Timeframe Candlestick Chart" />
+    </div>
+</div>
+
+<div id="multi_timeframe-error"
+    style="display: none; padding: 20px; background: #ffebee; border-left: 4px solid #f44336; margin: 20px 0;">
+    <h4 style="margin: 0 0 10px 0; color: #c62828;">Error</h4>
+    <p id="multi_timeframe-error-message" style="margin: 0;"></p>
+</div>

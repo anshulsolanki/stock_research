@@ -66,6 +66,7 @@
             <button class="sub-tab-btn" onclick="switchSubTab('lagging', 'bollinger')">Bollinger Bands</button>
             <button class="sub-tab-btn" onclick="switchSubTab('lagging', 'crossover')">Crossover</button>
             <button class="sub-tab-btn" onclick="switchSubTab('lagging', 'donchian')">Donchian</button>
+            <button class="sub-tab-btn" onclick="switchSubTab('lagging', 'multi_timeframe')">Multi-Timeframe</button>
         </div>
 
         <!-- MACD Tab -->
@@ -91,6 +92,11 @@
         <!-- Donchian Tab -->
         <div id="donchian-tab" class="analysis-panel">
             {% include 'partials/donchian_panel.html' %}
+        </div>
+
+        <!-- Multi-Timeframe Tab -->
+        <div id="multi_timeframe-tab" class="analysis-panel">
+            {% include 'partials/multi_timeframe_panel.html' %}
         </div>
     </div>
 
