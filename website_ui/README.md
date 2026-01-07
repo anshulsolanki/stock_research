@@ -156,6 +156,11 @@ graph TD
    - Upper/Lower channel breakouts
    - Channel-based entry signals
 
+6. **Multi-Timeframe Analysis**
+   - Combined Supertrend & MACD analysis across Weekly, Daily, and 15-Minute timeframes
+   - Multi-pane interactive candlestick charts with EMA overlays
+   - Holistic trend verification across multiple time horizons
+
 ### User Interface Features
 - **Real-time Chart Generation**: Auto-generated matplotlib visualizations
 - **Configurable Parameters**: Customize each indicator's settings
@@ -410,7 +415,7 @@ This tool is for educational and research purposes only. Technical analysis does
 
 ---
 
-**Last Updated**: December 2024  
-**Version**: 1.0
+**Last Updated**: January 2026
+**Version**: 1.1
 
 **Made with ❤️ for modern stock market analysis**

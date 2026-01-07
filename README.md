@@ -27,9 +27,9 @@ graph TD
     Data[(Yahoo Finance Data)] --> Analysis[Analysis Modules]
     
     subgraph Analysis [Analysis Logic]
+        Market[Market Analysis]
         Lagging[Lagging Indicators]
         Leading[Leading Indicators]
-        Market[Market Analysis]
         Fund[Fundamental Analysis]
     end
     
@@ -120,6 +120,15 @@ Located in `lagging_indicator_analysis/`
 - **Type**: Breakout indicator (Turtle Trading)
 - **Signals**: Upper/Lower channel breakouts
 - **Use Case**: Breakout trading and channel-based entries
+
+#### 6. Multi-Timeframe Analysis
+- **File**: [`multi_timeframe_analysis.py`](./lagging_indicator_analysis/multi_timeframe_analysis.py)
+- **Type**: Composite Trend & Momentum
+- **Features**:
+  - Combined Supertrend & MACD analysis across Weekly, Daily, and 15-Minute timeframes
+  - Multi-pane interactive candlestick charts with EMA overlays
+  - Integrated into PDF reports and Web Dashboard
+- **Use Case**: Holistic trend verification across multiple time horizons
 
 ### Leading Indicators (Predictive) 🐇
 
@@ -272,8 +281,22 @@ stock_research/
 ├── fundamental_analysis/              # Fundamental health metrics
 │   └── fundamental_analysis.py        # Growth & valuation logic
 ├── lagging_indicator_analysis/        # Trend-following indicators
+│   ├── macd_analysis.py               # MACD Momentum & Trend
+│   ├── supertrend_analysis.py         # Supertrend & Trend direction
+│   ├── bollinger_band_analysis.py     # Volatility Bands
+│   ├── crossover_analysis.py          # EMA Crossovers
+│   ├── donchian_channel_analysis.py   # Price Channel Breakouts
+│   ├── kalman_filter_analysis.py      # Noise reduction (Experimental)
+│   └── multi_timeframe_analysis.py    # Multi-timeframe trend analysis
 ├── leading_indicator_analysis/        # Predictive indicators
+│   ├── rs_analysis.py                 # Relative Strength analysis
+│   ├── rsi_divergence_analysis.py     # RSI Divergence detection
+│   ├── rsi_volume_divergence.py       # RSI + Volume Divergence
+│   └── volatility_squeeze_analysis.py # Volatility Squeeze detection
 ├── market_analysis/                   # Market-wide analysis tools
+│   ├── batch_analysis.py              # Multi-stock batch processing
+│   ├── sector_analysis.py             # Sector-wide relative strength
+│   └── stock_in_sector_analysis.py    # Stock vs Sector comparison
 ├── web_app/                           # Classic Flask web application
 ├── website_ui/                        # Modern dashboard web interface
 ├── data/
@@ -303,5 +326,5 @@ For personal use only.
 ---
 Made with ❤️ for stock market enthusiasts and technical analysts
 
-**Last Updated**: December 2025  
+**Last Updated**: January 2026  
 **Version**: 2.1
