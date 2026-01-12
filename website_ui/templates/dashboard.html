@@ -38,6 +38,7 @@
             <button class="sub-tab-btn" onclick="switchSubTab('leading', 'volatility_squeeze')">Volatility
                 Squeeze</button>
             <button class="sub-tab-btn" onclick="switchSubTab('leading', 'rs')">RS Analysis</button>
+            <button class="sub-tab-btn" onclick="switchSubTab('leading', 'volume')">Volume Analysis</button>
         </div>
 
         <!-- RSI Tab -->
@@ -58,6 +59,11 @@
         <!-- RS Analysis Tab -->
         <div id="rs-tab" class="analysis-panel">
             {% include 'partials/rs_panel.html' %}
+        </div>
+        <!-- Volume Analysis Tab -->
+        <div id="volume-tab" class="analysis-panel">
+            {% include 'partials/volume_panel.html' %}
+        </div>
         </div>
     </div>
 

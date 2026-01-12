@@ -259,6 +259,10 @@ async function analyzeStock(analysisType = 'all') {
         if (data.success) {
             displayResults(data, analysisType);
 
+            if (data.volume) {
+                displayVolumeAnalysis(data.volume);
+            }
+
             // Save last analyzed stock to localStorage
             try {
                 const stockData = {
@@ -1436,6 +1440,69 @@ function sortTable(n) {
                 dir = "desc";
                 switching = true;
             }
+        }
+    }
+}
+
+function displayVolumeAnalysis(data) {
+    console.log("displayVolumeAnalysis called", data);
+    const chartImg = document.getElementById('volumeChartImage');
+    const signalsList = document.getElementById('volumeSignalsList');
+    const noSignals = document.getElementById('volumeNoSignals');
+
+    if (chartImg && data.chart_image) {
+        console.log("Setting chart image, length:", data.chart_image.length);
+        chartImg.src = 'data:image/png;base64,' + data.chart_image;
+        chartImg.style.display = 'block';
+    } else if (chartImg) {
+        console.log("No chart image found in data");
+        chartImg.style.display = 'none';
+    }
+
+    if (signalsList) {
+        signalsList.innerHTML = '';
+        const divs = data.divergences || [];
+
+        if (divs.length === 0) {
+            if (noSignals) noSignals.style.display = 'block';
+        } else {
+            if (noSignals) noSignals.style.display = 'none';
+            // Show last 10 signals
+            divs.slice(-10).reverse().forEach(div => {
+                const item = document.createElement('div');
+                item.className = 'divergence-item';
+
+                // Determine style based on type
+                let styleClass = '';
+                let icon = '';
+
+                if (div.Type.includes('Buying Exhaustion') || div.Type.includes('Bearish')) {
+                    styleClass = 'bearish';
+                    icon = '▼';
+                } else if (div.Type.includes('Climax')) {
+                    styleClass = 'bearish'; // Climax often bearish
+                    icon = 'X';
+                } else if (div.Type.includes('Distribution')) {
+                    styleClass = 'bearish';
+                    icon = '●';
+                } else {
+                    styleClass = 'bullish';
+                    icon = '▲';
+                }
+
+                item.classList.add(styleClass);
+
+                item.innerHTML = `
+                    <div class="div-date">${div.Date}</div>
+                    <div class="div-type">
+                        <span class="div-icon">${icon}</span>
+                        ${div.Type}
+                    </div>
+                     <div class="div-price">@ ${div.Price.toFixed(2)}</div>
+                    <div class="div-details">${div.Details}</div>
+                `;
+                signalsList.appendChild(item);
+            });
         }
     }
 }

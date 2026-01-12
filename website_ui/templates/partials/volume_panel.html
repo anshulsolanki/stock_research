@@ -1,0 +1,53 @@
+<!-- Volume Analysis Configuration -->
+<div class="settings-panel">
+    <div class="settings-header" onclick="toggleConfig('volumeConfigPanel')">
+        <span><i class="fas fa-sliders-h"></i> Configuration</span>
+        <i class="fas fa-chevron-down"></i>
+    </div>
+    <div id="volumeConfigPanel" class="settings-body" style="display: none;">
+        <div class="input-group">
+            <label>Peak Order (Sensitivity)</label>
+            <input type="number" id="volumeOrder" value="5" min="1" max="20">
+        </div>
+        <div class="input-group">
+            <label>Lookback (Days)</label>
+            <input type="number" id="volumeLookback" value="365" min="30" max="1000">
+        </div>
+        <button class="btn-primary" onclick="analyzeStock('volume')">Update Analysis</button>
+    </div>
+</div>
+
+<!-- Chart Section -->
+<div class="chart-container">
+    <img id="volumeChartImage" src="" alt="Volume Analysis Chart" style="display: none;" />
+</div>
+
+<!-- Signals Section -->
+<div class="alert-section">
+    <h3><i class="fas fa-list"></i> Detected Signals</h3>
+
+    <div id="volumeSignalsList" class="alert-list">
+        <!-- Populated by JS -->
+    </div>
+
+    <div id="volumeNoSignals" class="no-signals" style="display: none; color: #64748b; padding: 10px;">
+        No significant volume signals detected in the recent period.
+    </div>
+</div>
+
+<!-- Strategy Guide -->
+<div class="summary-card">
+    <h3>Strategy Guide</h3>
+    <div class="divergence-details">
+        <ul style="list-style-type: none; padding: 0;">
+            <li style="margin-bottom: 8px;"><strong>Climax Churn (Purple X):</strong> High volume (>2x Avg) with small
+                body at highs. Often indicates "smart money" selling into strength.</li>
+            <li style="margin-bottom: 8px;"><strong>Distribution (Maroon Dot):</strong> High volume (>Avg) on down days.
+                Indicates institutional exiting.</li>
+            <li style="margin-bottom: 8px;"><strong>Buying Exhaustion (Red ▼):</strong> Price makes Higher Highs while
+                Volume makes Lower Highs. Demand drying up.</li>
+            <li style="margin-bottom: 8px;"><strong>Selling Exhaustion (Green ▲):</strong> Price makes Lower Lows while
+                Volume makes Lower Lows. Supply drying up.</li>
+        </ul>
+    </div>
+</div>

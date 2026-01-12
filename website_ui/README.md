@@ -21,6 +21,9 @@ This is the **modern dashboard interface** for the Stock Technical Analysis plat
 **Leading Indicators (RSI Divergence)**
 ![Leading Indicator](docs/images/leading_indicator.png)
 
+**Volume Analysis**
+![Volume Analysis](docs/images/volume_analysis.png)
+
 **Lagging Indicators (MACD)**
 ![Lagging Indicator](docs/images/lagging_indicator.png)
 
@@ -129,6 +132,12 @@ graph TD
    - Momentum pattern detection
    - Early turnaround signals
    - Automated ranking system
+
+5. **Volume Analysis**
+   - **Climax Volume (Churning)**: Identification of stalling despite high volume
+   - **Distribution Days**: Detection of institutional selling
+   - **Exhaustion Signals**: Peak/Trough divergence (Buying/Selling Exhaustion)
+   - **Visualizations**: Overlay of signals on Price/Volume chart
 
 #### Lagging Indicators (Trend-Following) 🐢
 1. **MACD Analysis**

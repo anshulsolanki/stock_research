@@ -66,6 +66,10 @@ def fetch_data(ticker, interval='1d', lookback_periods=365):
     """
     Fetches historical data for the given ticker.
     """
+    #i am hard coding the lookback_periods to 1 year for now. There is no point doing more than that.
+    #because we are looking for peaks and troughs, and we need enough data to find them.
+    lookback_periods=365
+
     end_date = datetime.now()
     start_date = end_date - timedelta(days=lookback_periods)
     
@@ -91,9 +95,54 @@ def fetch_data(ticker, interval='1d', lookback_periods=365):
 # ==========================================
 def detect_divergences(df, order=5):
     """
-    Identifies divergence conditions based on Peak-to-Peak Volume comparison.
+    Identifies divergence conditions and advanced volume signals.
     """
-    # 1. Find local peaks and troughs for Price
+    divergences = []
+    
+    # --- 1. Technical Calculations ---
+    # Volume MA (20-day)
+    df['Volume_MA_20'] = df['Volume'].rolling(window=20).mean()
+    
+    # Candle metrics
+    df['Body_Size'] = abs(df['Close'] - df['Open'])
+    df['Range'] = df['High'] - df['Low']
+    df['Body_Pct_Range'] = np.where(df['Range'] > 0, df['Body_Size'] / df['Range'], 0)
+    
+    # --- 2. Advanced Volume Signals ---
+    
+    # A) Climax Volume (Churning)
+    # Condition: Volume > 2.0x Volume MA AND Body < 25% of Range
+    # We also check if it's near a high (optional, but churning usually implies top)
+    df['Climax_Churn'] = (df['Volume'] > 2.0 * df['Volume_MA_20']) & (df['Body_Pct_Range'] < 0.25)
+    
+    # B) Distribution Days
+    # Condition: Red Day, Volume > Volume MA, Falls < 1.5%
+    df['Distribution_Day'] = (df['Close'] < df['Close'].shift(1)) & \
+                             (df['Volume'] > 1.0 * df['Volume_MA_20']) & \
+                             ((df['Close'] - df['Close'].shift(1)) / df['Close'].shift(1) > -0.015)
+
+    # Collect these signals for plotting/reporting
+    # We iterate through the dataframe to find these events
+    for date, row in df.iterrows():
+        if row['Climax_Churn']:
+            divergences.append({
+                'Type': 'Climax Volume (Churning)',
+                'Date': date,
+                'Price': row['High'], # Plot above marker
+                'Details': f"Vol: {row['Volume']:,.0f} ( > 2x MA), Small Body"
+            })
+            
+        if row['Distribution_Day']:
+            # We treat this slightly differently, maybe just collect them or plot them
+            # For uniformity, we add to divergences list but with a specific type
+            divergences.append({
+                'Type': 'Distribution Day',
+                'Date': date,
+                'Price': row['High'],
+                'Details': f"Vol: {row['Volume']:,.0f} (> Avg), Price Change: {((row['Close'] - df.loc[date].get('prior_close', row['Close']))/df.loc[date].get('prior_close', row['Close']) or 0):.2%}" 
+            })
+
+    # --- 3. Peak/Trough Divergences ---
     # We use Close price for peaks
     price_values = df['Close'].values
     peak_indices = argrelextrema(price_values, np.greater_equal, order=order)[0]
@@ -105,9 +154,7 @@ def detect_divergences(df, order=5):
     df.iloc[peak_indices, df.columns.get_loc('price_peak')] = df.iloc[peak_indices]['Close']
     df.iloc[trough_indices, df.columns.get_loc('price_trough')] = df.iloc[trough_indices]['Close']
     
-    divergences = []
-    
-    # 2. Check for Bearish Divergence (Price Higher High, Volume Lower)
+    # Check for Bearish Divergence (Price Higher High, Volume Lower)
     for i in range(1, len(peak_indices)):
         prev_idx = peak_indices[i-1]
         curr_idx = peak_indices[i]
@@ -122,13 +169,13 @@ def detect_divergences(df, order=5):
         # Bearish: Higher High in Price, but Lower Volume
         if curr_price > prev_price and curr_vol < prev_vol:
             divergences.append({
-                'Type': 'Bearish Reversal (Buying Exhaustion)',
+                'Type': 'Buying Exhaustion (Bearish Div)',
                 'Date': df.index[curr_idx],
                 'Price': curr_price,
                 'Details': f"Price HH ({prev_price:.2f} -> {curr_price:.2f}), Volume ↓ ({prev_vol:,.0f} -> {curr_vol:,.0f})"
             })
 
-    # 3. Check for Bullish Divergence (Price Lower Low, Volume Lower)
+    # Check for Bullish Divergence (Price Lower Low, Volume Lower)
     for i in range(1, len(trough_indices)):
         prev_idx = trough_indices[i-1]
         curr_idx = trough_indices[i]
@@ -142,7 +189,7 @@ def detect_divergences(df, order=5):
         # Bullish: Lower Low in Price, but Lower Volume (Selling exhaustion)
         if curr_price < prev_price and curr_vol < prev_vol:
             divergences.append({
-                'Type': 'Bullish Reversal (Selling Exhaustion)',
+                'Type': 'Selling Exhaustion (Bullish Div)',
                 'Date': df.index[curr_idx],
                 'Price': curr_price,
                 'Details': f"Price LL ({prev_price:.2f} -> {curr_price:.2f}), Volume ↓ ({prev_vol:,.0f} -> {curr_vol:,.0f})"
@@ -170,20 +217,40 @@ def plot_results(df, ticker, divergences, show_plot=True):
     ax1.scatter(troughs.index, troughs['Close'], color='cyan', marker='^', s=40, alpha=0.5, label='Troughs')
     
     # Plot Divergence Markers
+    # Plot Divergence Markers
     for div in divergences:
-        if 'Bearish' in div['Type']:
+        marker_size = 150
+        linewidth = 1.5
+        
+        if 'Climax Volume' in div['Type']:
+            color = 'purple'
+            marker = 'X'
+            y_pos = div['Price'] * 1.01
+            label = 'Climax Churn'
+        elif 'Distribution Day' in div['Type']:
+            # We might not want to plot EVERY distribution day as a big marker if there are many
+            # Let's plot small red dots
+            color = 'maroon'
+            marker = '.'
+            y_pos = div['Price'] * 1.005
+            marker_size = 50
+            label = 'Distribution'
+            linewidth = 0.5
+        elif 'Buying Exhaustion' in div['Type']:
             color = 'red'
             marker = 'v'
-            y_pos = div['Price'] * 1.02
-        else: # Bullish
+            y_pos = div['Price'] * 1.005
+            label = 'Buying Exhaustion'
+        else: # Selling Exhaustion
             color = 'green'
             marker = '^'
-            y_pos = div['Price'] * 0.98
+            y_pos = div['Price'] * 0.995
+            label = 'Selling Exhaustion'
             
         ax1.scatter(div['Date'], y_pos, 
-                    color=color, marker=marker, s=150, 
-                    label=div['Type'], zorder=10, 
-                    edgecolors='black', linewidths=1.5)
+                    color=color, marker=marker, s=marker_size, 
+                    label=label, zorder=10, 
+                    edgecolors='black', linewidths=linewidth)
         
     ax1.set_title(f'{ticker} - Volume Divergence Analysis (Peak-to-Peak, Order: {CONFIG["ORDER"]})', fontweight='bold')
     ax1.set_ylabel('Price')

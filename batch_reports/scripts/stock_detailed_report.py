@@ -38,6 +38,7 @@ try:
     import rsi_volume_divergence
     import volatility_squeeze_analysis
     import rs_analysis
+    import volume_analysis
     import multi_timeframe_analysis
     from website_screen_shot_automation.trendlyne_snapshot import get_trendlyne_snapshots
 except ImportError as e:
@@ -736,6 +737,51 @@ def render_rs_analysis(pdf, ticker, df=None):
         print(f"    Error in RS Analysis: {e}")
 
 
+
+def render_volume_analysis(pdf, ticker, df=None):
+    """
+    Runs Volume Analysis and adds summary + chart to PDF.
+    """
+    try:
+        print("  Running Volume Analysis...")
+        # Note: volume_analysis.run_analysis now supports return_figure=True
+        res = volume_analysis.run_analysis(ticker, show_plot=False, df=df, return_figure=True)
+        
+        if res.get('success'):
+            summary = {}
+            summary['═══ VOLUME ANALYSIS ═══'] = ''
+            
+            # Signals
+            divergences = res.get('divergences', [])
+            if not divergences:
+                summary['Status'] = 'No significant volume anomalies detected.'
+            else:
+                summary['Status'] = f"{len(divergences)} Signals Detected"
+                summary[''] = '' # Spacer
+                
+                # List last 5 signals
+                for div in divergences[-5:]:
+                    date = div['Date']
+                    signal_type = div['Type']
+                    # Add emoji/marker based on type
+                    if 'Buying' in signal_type or 'Bullish' in signal_type:
+                         marker = '[+]'
+                    elif 'Selling' in signal_type or 'Bearish' in signal_type or 'Distribution' in signal_type or 'Climax' in signal_type:
+                         marker = '[-]'
+                    else:
+                         marker = '[?]'
+                         
+                    summary[f"{date} {marker}"] = signal_type
+
+            render_summary_page(pdf, f"{ticker} - Volume Analysis", summary)
+            
+            if res.get('figure'):
+                add_analysis_chart(pdf, res['figure'], f"{ticker} - Volume Analysis")
+                
+    except Exception as e:
+        print(f"    Error in Volume Analysis: {e}")
+
+
 def render_technical_indicators(pdf, ticker, df=None):
     """
     Renders all technical indicators in the specified order:
@@ -753,6 +799,7 @@ def render_technical_indicators(pdf, ticker, df=None):
     render_macd(pdf, ticker, df=df)
     render_volatility_squeeze(pdf, ticker, df=df)
     render_rsi_volume_divergence(pdf, ticker, df=df)
+    render_volume_analysis(pdf, ticker, df=df)
 
 
 def render_multi_timeframe_analysis(pdf, ticker, df=None):

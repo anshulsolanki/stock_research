@@ -162,6 +162,18 @@ Located in `leading_indicator_analysis/`
   - Automated ranking system
 - **Use Case**: Compare stocks within sectors, identify relative winners
 
+#### 5. Volume Analysis
+- **File**: [`volume_analysis.py`](./leading_indicator_analysis/volume_analysis.py)
+- **Type**: Advanced Volume-Price Analysis
+- **Features**:
+  - **Climax Volume (Churning)**: Identification of stalling despite high volume
+  - **Distribution Days**: Detection of institutional selling
+  - **Exhaustion Signals**: Peak/Trough divergence detection (Buying/Selling Exhaustion)
+  - **Visualizations**: Overlay of signals on Price/Volume chart
+- **Use Case**: Identify localized tops/bottoms and smart money exits
+
+![Volume Analysis Screenshot](docs/screenshots/volume_analysis.png)
+
 ## 🏢 Fundamental Analysis
 
 Located in `fundamental_analysis/`

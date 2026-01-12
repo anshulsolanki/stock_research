@@ -27,6 +27,7 @@ from rsi_divergence_analysis import run_analysis as run_rsi_analysis
 from rsi_volume_divergence import run_analysis as run_rsi_volume_analysis
 from volatility_squeeze_analysis import run_analysis as run_volatility_squeeze_analysis
 from rs_analysis import run_analysis as run_rs_analysis
+from volume_analysis import run_analysis as run_volume_analysis
 from sector_analysis import run_analysis as run_sector_analysis
 from stock_in_sector_analysis import run_analysis as run_stock_in_sector_analysis
 from batch_analysis import run_batch_analysis
@@ -132,6 +133,7 @@ def analyze():
         rsi_volume_config = data.get('rsi_volume_config', {})
         volatility_squeeze_config = data.get('volatility_squeeze_config', {})
         rs_config = data.get('rs_config', {})
+        volume_config = data.get('volume_config', {}) # Added volume_config
         use_sector_index = data.get('use_sector_index', False)
         
         if not ticker:
@@ -359,6 +361,31 @@ def analyze():
                 'signals': signals_formatted,
                 'chart_image': donchian_image_base64
             }
+
+        # Run Volume Analysis
+        if analysis_type in ['all', 'volume']:
+            print(f"Starting Volume analysis for {ticker}...")
+            try:
+                vol_config = data.get('volume_config', {})
+                if not vol_config:
+                    vol_config = {'ORDER': 5, 'LOOKBACK_PERIODS': 365}
+                    
+                vol_result = run_volume_analysis(ticker, show_plot=False, config=vol_config, df=df)
+                if vol_result['success']:
+                    print(f"Volume analysis result: {vol_result['success']}")
+                    
+                    # Ensure divergences is list of dicts
+                    divs = vol_result.get('divergences', [])
+                    
+                    response_data['volume'] = {
+                        'divergences': divs,
+                        'chart_image': vol_result.get('chart_image')
+                    }
+                else:
+                    print(f"Volume analysis failed: {vol_result.get('error')}")
+            except Exception as e:
+                print(f"Error in Volume analysis: {e}")
+                traceback.print_exc()
 
         # Run RSI Divergence Analysis
         if analysis_type in ['all', 'rsi']:
