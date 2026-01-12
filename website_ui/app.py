@@ -15,6 +15,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lagging_indicator
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'leading_indicator_analysis'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'market_analysis'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'fundamental_analysis'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'batch_reports', 'scripts'))
 
 from macd_analysis import run_analysis as run_macd_analysis
 from supertrend_analysis import run_analysis as run_supertrend_analysis
@@ -30,6 +31,7 @@ from sector_analysis import run_analysis as run_sector_analysis
 from stock_in_sector_analysis import run_analysis as run_stock_in_sector_analysis
 from batch_analysis import run_batch_analysis
 from fundamental_analysis import run_analysis as run_fundamental_analysis
+from stock_detailed_report import generate_stock_report
 
 app = Flask(__name__)
 
@@ -870,6 +872,49 @@ def get_batch_analysis():
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/download_report', methods=['GET'])
+def download_report():
+    """Generate and serve the stock detailed report PDF"""
+    from flask import send_file
+    import tempfile
+    
+    ticker = request.args.get('ticker')
+    if not ticker:
+        return jsonify({'success': False, 'error': 'Ticker is required'}), 400
+    
+    try:
+        ticker = ticker.strip().upper()
+        # Use a fixed temporary directory or the reports directory
+        # The generate_stock_report fn has a default output_dir, but we might want to segregate web downloads
+        # Let's use a specific directory in the project for easier persistence/debugging if needed, 
+        # or just use the system temp if we want to be clean.
+        
+        # Using a 'downloads' folder in website_ui to keep it contained
+        download_dir = os.path.join(os.path.dirname(__file__), 'downloads')
+        if not os.path.exists(download_dir):
+            os.makedirs(download_dir)
+            
+        # Generate the report
+        print(f"Generating PDF report for {ticker}...")
+        pdf_path = generate_stock_report(ticker, output_dir=download_dir)
+        
+        if not os.path.exists(pdf_path):
+             return jsonify({'success': False, 'error': 'Failed to generate PDF report'}), 500
+             
+        # Serve the file
+        # as_attachment=True forces download
+        # download_name is available in newer flask, or use attachment_filename in older
+        return send_file(
+            pdf_path,
+            as_attachment=True,
+            download_name=os.path.basename(pdf_path),
+            mimetype='application/pdf'
+        )
+        
+    except Exception as e:
+        print(f"Error generating report: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='127.0.0.1', port=5001)

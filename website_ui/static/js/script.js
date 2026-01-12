@@ -746,6 +746,62 @@ function displayResults(data, analysisType) {
             document.getElementById('multiTimeframeChartImage').src = 'data:image/png;base64,' + multiTf.chart_image;
         }
     }
+
+    // Show download button if data is present
+    const downloadBtn = document.getElementById('downloadReportBtn');
+    if (downloadBtn) {
+        downloadBtn.style.display = 'inline-block';
+    }
+}
+
+async function downloadReport() {
+    const ticker = document.getElementById('tickerInput').value.trim();
+    if (!ticker) {
+        showError('Please search for a stock first');
+        return;
+    }
+
+    const downloadBtn = document.getElementById('downloadReportBtn');
+    const originalText = downloadBtn.innerHTML;
+    downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
+    downloadBtn.disabled = true;
+
+    try {
+        // Use fetch with a GET request
+        const response = await fetch(`/api/download_report?ticker=${encodeURIComponent(ticker)}`, {
+            method: 'GET'
+        });
+
+        if (response.ok) {
+            // Check if it's a blob
+            const blob = await response.blob();
+            // Create a temporary link
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            // Get filename from header or default
+            // Content-Disposition might not be exposed by CORS if separate domains, but here likely same origin
+            a.download = `Stock_Report_${ticker}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } else {
+            // Try to parse JSON error
+            try {
+                const errData = await response.json();
+                showError(errData.error || 'Download failed');
+            } catch (e) {
+                showError('Download failed with status: ' + response.status);
+            }
+        }
+    } catch (error) {
+        console.error('Download error:', error);
+        showError('Network error during download');
+    } finally {
+        downloadBtn.innerHTML = originalText;
+        downloadBtn.disabled = false;
+    }
 }
 
 function showError(message) {
