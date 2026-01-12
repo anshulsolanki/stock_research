@@ -1,15 +1,45 @@
 """
-VOLUME ANALYSIS TOOL
-=====================
+VOLUME ANALYSIS TOOL (Smart Money Detection)
+============================================
 
-PURPOSE:
---------
-This module analyzes Volume-Price relationships to identify:
-- Buying/Selling Exhaustion (Divergences)
-- Climax Volume (Churning)
-- Distribution Days
+OVERVIEW:
+---------
+This module analyzes Volume-Price relationships to identify "Smart Money" institutional activity.
+It focuses on three key signals that often precede significant trend reversals:
+1. Buying/Selling Exhaustion (Volume Divergences)
+2. Climax Volume (Churning)
+3. Distribution Days
 
-It is designed to be used as a backend service for the stock research dashboard.
+METHODOLOGY:
+------------
+
+1. Buying Exhaustion (Bearish Divergence):
+   - Logic: Price makes a Higher High, but Volume makes a Lower High.
+   - Interpretation: Demand is drying up at higher prices. The "fuel" (volume) driving the trend is running low.
+
+2. Selling Exhaustion (Bullish Divergence):
+   - Logic: Price makes a Lower Low, but Volume makes a Lower Low.
+   - Interpretation: Selling pressure is decreasing despite lower prices. Sellers are exhausted.
+
+3. Climax Volume (Churning / Top Formation):
+   - Logic: 
+     (a) Volume is ULTRA HIGH (> 200% of 20-day Average).
+     (b) Price Body is SMALL (< 25% of Daily Range).
+   - Interpretation: Massive effort (Volume) with little result (Price Move). This indicates "Churning", 
+     where Smart Money is effectively transferring stock to retail (selling into strength) without moving the price further up.
+
+4. Distribution Days (Institutional Selling):
+   - Logic: 
+     (a) Close < Previous Close (Red Day).
+     (b) Volume > 20-day Average (Heavy Volume).
+     (c) Price Drop is "Controlled" (>-1.5%).
+   - Interpretation: Institutions are unloading shares systematically without crashing the price 
+     (which would hurt their own fill prices). A cluster of these days often marks a top.
+
+USAGE:
+------
+Can be run standalone or imported:
+> python leading_indicator_analysis/volume_analysis.py
 """
 
 import pandas as pd
@@ -247,6 +277,9 @@ def plot_results(df, ticker, divergences, show_plot=True, return_figure=False):
     # Determine backend if not showing plot
     if not show_plot:
         matplotlib.use('Agg')
+    
+    # Close any existing figures to prevent accumulation
+    plt.close('all')
         
     fig = plt.figure(figsize=(14, 10))
     

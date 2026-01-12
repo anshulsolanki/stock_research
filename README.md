@@ -172,7 +172,6 @@ Located in `leading_indicator_analysis/`
   - **Visualizations**: Overlay of signals on Price/Volume chart
 - **Use Case**: Identify localized tops/bottoms and smart money exits
 
-![Volume Analysis Screenshot](docs/screenshots/volume_analysis.png)
 
 ## 🏢 Fundamental Analysis
 
