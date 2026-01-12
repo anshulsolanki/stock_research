@@ -1,5 +1,0 @@
-{
-  "ssh_known_hosts": {
-    "Value": "@cert-authority *.c.googlers.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOy6WAqYq9YnhsyrFSHzBIkQwPSVgXKH3fpur83ANsg27fQGH2oCeIKly/n6iQo1R7l3D1xhlh0ozgPqunioD/s="
-  }
-}
