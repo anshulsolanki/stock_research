@@ -33,6 +33,20 @@ SOFTWARE.
 from flask import Flask, render_template, request, jsonify
 import sys
 import os
+try:
+    from dotenv import load_dotenv
+    # Load environment variables from .env file
+    load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+except ImportError:
+    print("\n" + "="*80)
+    print("ERROR: 'python-dotenv' not found!")
+    print("It looks like you are NOT using the project's virtual environment.")
+    print("Please run the app using:")
+    print("  ./.venv/bin/python website_ui/app.py")
+    print("="*80 + "\n")
+    # We can continue if they don't have .env needs, but Flask might complain later
+    # For now, let's just let it fail gracefully later or just pass
+    load_dotenv = None
 import base64
 from io import BytesIO
 import matplotlib
