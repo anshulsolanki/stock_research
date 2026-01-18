@@ -73,3 +73,6 @@ htmlcov/
 # Trendlyne Automation & Browser Cache
 batch_reports/scripts/website_screen_shot_automation/trendlyne_user_data/
 .playwright/
+
+# Generated Reports
+batch_reports/reports/

@@ -776,8 +776,15 @@ def render_volume_analysis(pdf, ticker, df=None):
     """
     try:
         print("  Running Volume Analysis...")
+        
+        # Filter for last 1 year of data if df is provided
+        local_df = df
+        if local_df is not None:
+            cutoff_date = local_df.index[-1] - datetime.timedelta(days=365)
+            local_df = local_df[local_df.index > cutoff_date].copy()
+
         # Note: volume_analysis.run_analysis now supports return_figure=True
-        res = volume_analysis.run_analysis(ticker, show_plot=False, df=df, return_figure=True)
+        res = volume_analysis.run_analysis(ticker, show_plot=False, df=local_df, return_figure=True)
         
         if res.get('success'):
             summary = {}
