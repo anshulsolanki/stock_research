@@ -18,7 +18,10 @@ This project provides a complete suite of technical and fundamental analysis too
 3.  **🏙️ Market Analysis** - Sector analysis, batch analysis, and relative strength tools
 4.  **🏢 Fundamental Analysis** - Financial health, growth trends, and valuation metrics
 5.  **📑 Automated Reporting** - PDF report generation for weekly analysis and deep dives
-6.  **🌐 Web Interfaces** - Two Flask-based UIs (classic and modern dashboard)
+6.  **🤖 LLM Analysis** - AI-powered report auditing and market sentiment
+7.  **📉 Backtesting** - Strategy performance verification and futures rolling simulation
+8.  **🔌 Algo Trading** - Integration with Zerodha for order execution
+9.  **🌐 Web Interfaces** - Two Flask-based UIs (classic and modern dashboard)
 
 ## 🏗️ System Architecture
 
@@ -31,10 +34,12 @@ graph TD
         Lagging[Lagging Indicators]
         Leading[Leading Indicators]
         Fund[Fundamental Analysis]
+        Backtest[Backtesting Engine]
     end
     
     Analysis --> WebUI[Web Interface]
     Analysis --> PDF[Automated Reports]
+    Analysis --> LLM[LLM Analysis]
     
     subgraph WebUI [Web Application]
         Dashboard[Modern Dashboard]
@@ -45,6 +50,16 @@ graph TD
         Weekly[Weekly Orchestrator]
         StockReport[Detailed Stock Report]
     end
+
+    PDF --> LLM
+    LLM --> Gemini[(Gemini API)]
+    
+    subgraph Trading [Execution]
+        Algo[Algo Trading Module]
+    end
+    
+    WebUI --> Algo
+    Algo --> Zerodha[(Zerodha Kite)]
 ```
 
 ## 🌐 Web Interfaces
@@ -217,7 +232,48 @@ Located in `market_analysis/`
   - Generate comparative reports
 - **Use Case**: Screen and compare multiple stocks efficiently
 
-## 📑 Automated Reporting
+## 🤖 LLM-Powered Analysis
+
+Located in `llm/llm_reports/`
+
+#### 1. Gemini Report Auditor
+- **File**: [`analyze_report.py`](./llm/llm_reports/analyze_report.py)
+- **Type**: AI Content Generation & Audit
+- **Features**:
+  - **Data Audit**: Checks technical reports for data consistency and missing indicators.
+  - **Setup Analysis**: Uses Gemini 3.0 Pro to evaluate price structure and momentum.
+  - **Trade Recommendation**: Provides clear Entry, Stop Loss, and Take Profit levels for positional trades.
+  - **Integrated News**: Automatically fetches latest news and brokerage analyst targets via Google Search.
+  - **Report Merging**: Combines the original technical PDF with the LLM analysis into a single file.
+
+#### 2. Trade Discovery
+- **File**: [`find_best_trades.py`](./llm/llm_reports/find_best_trades.py)
+- **Function**: Scans multiple analysis results to extract high-confidence opportunities.
+
+## � Backtesting Engine
+
+Located in `backtesting/`
+
+#### 1. Futures Rolling Backtest
+- **File**: [`golden_cross_backtest.py`](./backtesting/golden_cross_backtest.py)
+- **Features**:
+  - **Golden Cross Strategy**: Backtests 50/200 EMA crossovers.
+  - **Futures Simulation**: Implements monthly "Last Thursday" rollover logic for F&O stocks.
+  - **Performance Metrics**: Calculates P/L per contract leg and cumulative trend gains.
+
+## 🔌 Algo Trading Integration
+
+Located in `algo_trading/`
+
+#### 1. Zerodha Kite Integration
+- **File**: [`zerodha_manager.py`](./algo_trading/zerodha_manager.py)
+- **Features**:
+  - **Session Management**: Automated access token handling.
+  - **Order Execution**: Supports Market, Limit, and SL orders.
+  - **Portfolio Tracking**: Real-time LTP, Positions, and Holdings retrieval.
+
+
+## �📑 Automated Reporting
 
 Located in `batch_reports/`
 
@@ -283,14 +339,13 @@ python lagging_indicator_analysis/supertrend_analysis.py
 ```
 stock_research/
 ├── README.md                          # This file - Project overview
+├── run_app.sh                         # Helper script to launch the application
 ├── batch_reports/                     # Automated PDF reporting
 │   ├── reports/                       # Generated report output
 │   └── scripts/                       # Orchestration scripts
 │       ├── run_weekly_orchestrator.py # Main automation entry point
 │       ├── stock_detailed_report.py   # Individual PDF generator
 │       └── weekly_analysis.py         # Weekly market screening
-├── fundamental_analysis/              # Fundamental health metrics
-│   └── fundamental_analysis.py        # Growth & valuation logic
 ├── lagging_indicator_analysis/        # Trend-following indicators
 │   ├── macd_analysis.py               # MACD Momentum & Trend
 │   ├── supertrend_analysis.py         # Supertrend & Trend direction
@@ -308,6 +363,18 @@ stock_research/
 │   ├── batch_analysis.py              # Multi-stock batch processing
 │   ├── sector_analysis.py             # Sector-wide relative strength
 │   └── stock_in_sector_analysis.py    # Stock vs Sector comparison
+├── backtesting/                       # Strategy performance testing
+│   ├── golden_cross_backtest.py       # Golden Cross with Futures rolling
+│   └── plot_ema.py                    # Visualization helper
+├── algo_trading/                      # Zerodha integration
+│   ├── zerodha_manager.py             # Kite API manager
+│   └── generate_access_token.py       # Authentication utility
+├── llm/                               # AI-powered analysis
+│   └── llm_reports/                   # Report auditing with Gemini
+│       ├── analyze_report.py          # Main LLM analyzer
+│       └── find_best_trades.py        # Recommendation extractor
+├── fundamental_analysis/              # Fundamental health metrics
+│   └── fundamental_analysis.py        # Growth & valuation logic
 ├── web_app/                           # Classic Flask web application
 ├── website_ui/                        # Modern dashboard web interface
 ├── data/
@@ -337,5 +404,5 @@ For personal use only.
 ---
 Made with ❤️ for stock market enthusiasts and technical analysts
 
-**Last Updated**: January 2026  
-**Version**: 2.1
+**Last Updated**: January 20, 2026  
+**Version**: 2.5
