@@ -76,3 +76,8 @@ batch_reports/scripts/website_screen_shot_automation/trendlyne_user_data/
 
 # Generated Reports
 batch_reports/reports/
+
+# LLM Project Data
+llm/et_user_data/
+llm/trendlyne_user_data/
+llm/experiment_garage/

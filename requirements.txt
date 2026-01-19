@@ -6,3 +6,10 @@ scipy
 flask
 kiteconnect
 python-dotenv
+google-generativeai
+google-genai
+pypdf
+fpdf2
+pydantic
+markdown
+openpyxl
