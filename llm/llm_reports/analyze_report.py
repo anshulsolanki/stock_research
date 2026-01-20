@@ -1,3 +1,22 @@
+"""
+Stock Report Analysis Tool using Google Gemini
+
+This script automates the analysis of PDF stock reports using Google's Gemini Models.
+It performs the following operations:
+1.  Uploads PDF stock reports to Gemini.
+2.  Generates a comprehensive analysis based on a trading persona (Positional Equity Trader).
+3.  Performs a web search for the latest news and analyst targets.
+4.  Generates a professional PDF report containing both the analysis and news.
+5.  Merges the generated analysis with the original PDF report.
+
+Usage:
+    python analyze_report.py <path_to_pdf_or_folder> [--model <model_name>]
+
+Requirements:
+    - GEMINI_API_KEY environment variable must be set.
+    - Python dependencies: google-genai, markdown, fpdf2, pypdf, python-dotenv.
+"""
+
 import os
 import time
 import sys
@@ -19,7 +38,18 @@ load_dotenv()
 DEFAULT_MODEL_NAME = "gemini-3-pro-preview" 
 
 def setup_gemini_client():
-    """Configures and returns a Gemini Client."""
+    """
+    Configures and initializes the Gemini Client.
+
+    Retrieves the API key from the 'GEMINI_API_KEY' environment variable.
+    Exits the program if the API key is missing.
+
+    Returns:
+        genai.Client: An authenticated instance of the Gemini Client.
+
+    Raises:
+        SystemExit: If GEMINI_API_KEY is not set.
+    """
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         print("Error: GEMINI_API_KEY environment variable not set.")
@@ -29,7 +59,15 @@ def setup_gemini_client():
 
 def save_analysis_to_pdf(text, output_path):
     """
-    Saves the analysis text as a PDF file using fpdf2.
+    Converts and saves the analysis text as a formatted PDF file.
+
+    Uses `markdown` to convert text to HTML, then `fpdf2` to render HTML to PDF.
+    Includes comprehensive formatting for tables, headers, and semantic colors.
+    Implements a fallback mechanism to text-only PDF if rich HTML rendering fails.
+
+    Args:
+        text (str): The markdown analysis text to be converted.
+        output_path (str): The absolute or relative path where the PDF will be saved.
     """
     # ... (Keep existing text processing logic) ...
     text = text.replace("–", "-").replace("—", "-").replace("’", "'").replace("“", '"').replace("”", '"').replace("₹", "INR ")
@@ -123,6 +161,27 @@ def save_analysis_to_pdf(text, output_path):
         html_content = html_content.replace("<li>", "<li style='margin-bottom: 5px;'>")
 
         html_content = re.sub(r'<table>', '<table border="1" align="center" width="100%" style="border-collapse: collapse;">', html_content)
+        
+        # Flatten newlines and carriage returns to prevent fpdf2 parsing issues
+        html_content = html_content.replace("\n", "").replace("\r", "")
+
+        # Strip attributes from th and td safely using \b regex to avoid corrupting <thead/tbody> headers
+        html_content = re.sub(r'<th\b[^>]*>', '<th>', html_content)
+        html_content = re.sub(r'<td\b[^>]*>', '<td>', html_content)
+        
+        html_content = re.sub(r'<td\b[^>]*>', '<td>', html_content)
+        
+        # Strip potentially problematic nested tags inside tables (fpdf2 can be sensitive)
+        # We strip font, b, strong, i, em tags ONLY inside tables to ensure stability while preserving global styling.
+        def clean_table_content(match):
+            table_html = match.group(0)
+            cleaned = re.sub(r'</?(font|b|strong|i|em)\b[^>]*>', '', table_html)
+            return cleaned
+
+        html_content = re.sub(r'<table\b[^>]*>.*?</table>', clean_table_content, html_content, flags=re.DOTALL)
+
+        # Apply custom table styling
+
         html_content = re.sub(r'<th>', '<th style="background-color: #f0f0f0; padding: 5px; font-weight: bold;">', html_content)
         html_content = re.sub(r'<td>', '<td style="padding: 5px;">', html_content)
 
@@ -134,16 +193,23 @@ def save_analysis_to_pdf(text, output_path):
             
             # Fallback 1: Try without the heavy inline styles which might confuse fpdf2
             simple_html = markdown.markdown(text, extensions=['tables'])
-            # Only essential table borders
+            # Only essential table borders and flattening
             simple_html = simple_html.replace("<table>", '<table border="1">')
+            simple_html = simple_html.replace("\n", "").replace("\r", "")
+            
             pdf = PDF()
             pdf.add_page()
             pdf.set_font("helvetica", size=11)
-            pdf.write_html(simple_html)
+            try:
+                pdf.write_html(simple_html)
+            except Exception as e2:
+                 # If simplified HTML also fails, we will fall through to the text-only fallback which is handled in the outer block
+                 raise e2
         
         # Save
         print(f"Saving analysis to PDF: {output_path}...")
         pdf.output(output_path)
+
         print(f"PDF Analysis saved successfully to: {output_path}")
 
     except Exception as e:
@@ -170,7 +236,18 @@ def save_analysis_to_pdf(text, output_path):
 
 def upload_to_gemini(client, path, mime_type="application/pdf"):
     """
-    Uploads the given file to Gemini using the client.
+    Uploads a local file to the Google Gemini File API.
+
+    Args:
+        client (genai.Client): The authenticated Gemini client.
+        path (str): Path to the local file to upload.
+        mime_type (str, optional): MIME type of the file. Defaults to "application/pdf".
+
+    Returns:
+        types.File: The uploaded file object from the Gemini API.
+
+    Raises:
+        SystemExit: If the file does not exist or upload fails.
     """
     if not os.path.exists(path):
         print(f"Error: File not found at {path}")
@@ -194,7 +271,14 @@ def upload_to_gemini(client, path, mime_type="application/pdf"):
 
 def wait_for_files_active(client, files):
     """
-    Waits for the given files to be active.
+    Polls the Gemini API until all uploaded files reach the 'ACTIVE' state.
+
+    This ensures files are fully processed and ready for inference before proceeding.
+    Exits the script if any file enters a failed state.
+
+    Args:
+        client (genai.Client): The authenticated Gemini client.
+        files (list): A list of file objects to monitor.
     """
     print("Waiting for file processing...", end="")
     for file in files:
@@ -212,7 +296,18 @@ def wait_for_files_active(client, files):
 
 def analyze_stock_report(pdf_path, model_name=DEFAULT_MODEL_NAME):
     """
-    Analyzes the stock report using Gemini.
+    Performs the complete analysis workflow for a single stock report PDF.
+
+    Workflow:
+    1.  Uploads the PDF to Gemini.
+    2.  Generates a strategic trading analysis (Data Audit, Setup Analysis, Recommendation).
+    3.  Extracts the stock name and performs a Google Search for recent news and analyst targets.
+    4.  Combines the analysis and news into a formatted PDF.
+    5.  Merges the generated analysis PDF with the original stock report PDF.
+
+    Args:
+        pdf_path (str): Path to the PDF file to analyze.
+        model_name (str, optional): The Gemini model to use. Defaults to DEFAULT_MODEL_NAME.
     """
     client = setup_gemini_client()
     
@@ -370,7 +465,11 @@ def analyze_stock_report(pdf_path, model_name=DEFAULT_MODEL_NAME):
     
 def analyze_folder(folder_path, model_name=DEFAULT_MODEL_NAME):
     """
-    Analyzes all PDF stock reports in a folder.
+    Batch processes all PDF files within the specified directory.
+
+    Args:
+        folder_path (str): Path to the directory containing PDF reports.
+        model_name (str, optional): The Gemini model to use. Defaults to DEFAULT_MODEL_NAME.
     """
     if not os.path.exists(folder_path):
         print(f"Error: Folder not found at {folder_path}")

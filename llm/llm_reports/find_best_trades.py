@@ -1,3 +1,23 @@
+"""
+Stock Trade Analysis & Screening Tool
+
+This script automates the screening of multiple stock trend reports to identify high-probability trade setups.
+It uses Google's Gemini models to analyze PDF reports in parallel and generates a ranked summary of recommendations.
+
+Key Features:
+-   **Parallel Processing**: Analyzes multiple PDFs concurrently for high throughput.
+-   **Resume Capability**: Skips already processed files to handle interruptions gracefully.
+-   **Structured Output**: Generates a JSONL log, an Excel spreadsheet, and a formatted PDF summary.
+-   **Ranking System**: Filters and ranks 'BUY' recommendations based on a confidence score (1-10).
+
+Usage:
+    python find_best_trades.py <target_directory> [--model <model_name>] [--workers <num_workers>]
+
+Requirements:
+    - GEMINI_API_KEY environment variable.
+    - Python dependencies: google-genai, pandas, fpdf2, openpyxl.
+"""
+
 import os
 import time
 import json
@@ -12,7 +32,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 DEFAULT_MODEL_NAME = "gemini-3-flash-preview"
 
 def get_api_key():
-    """Retrieves API key from environment or .env file."""
+    """
+    Retrieves the Gemini API key from the environment or a local .env file.
+
+    It first checks `os.environ`. If not found, it attempts to parse a `.env` file 
+    located in the same directory as the script.
+
+    Returns:
+        str or None: The API key if found, otherwise None.
+    """
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         try:
@@ -29,7 +57,17 @@ def get_api_key():
     return api_key
 
 def upload_to_gemini(client, path, mime_type="application/pdf"):
-    """Uploads the given file to Gemini."""
+    """
+    Uploads a file to the Gemini API.
+
+    Args:
+        client (genai.Client): Authenticated Gemini client.
+        path (str): Local path to the file.
+        mime_type (str, optional): MIME type of the file. Defaults to "application/pdf".
+
+    Returns:
+        types.File or None: The uploaded file object, or None if upload fails or file doesn't exist.
+    """
     if not os.path.exists(path):
         return None
     try:
@@ -41,7 +79,16 @@ def upload_to_gemini(client, path, mime_type="application/pdf"):
         return None
 
 def wait_for_file_active(client, file):
-    """Waits for the given file to be active."""
+    """
+    Polls the file status until it becomes active or fails.
+
+    Args:
+        client (genai.Client): Authenticated Gemini client.
+        file (types.File): The file object to monitor.
+
+    Returns:
+        bool: True if the file becomes 'ACTIVE', False otherwise.
+    """
     try:
         while file.state.name == "PROCESSING":
             time.sleep(1)
@@ -51,7 +98,22 @@ def wait_for_file_active(client, file):
         return False
 
 def analyze_report(client, model_name, file, filename):
-    """Analyzes a single report using the specific prompt."""
+    """
+    Sends the file to Gemini for strategic trade analysis.
+
+    Uses a specific prompt to extract a structured JSON recommendation (BUY/SELL/HOLD),
+    confidence score, and reasoning from the stock report.
+
+    Args:
+        client (genai.Client): Authenticated Gemini client.
+        model_name (str): Name of the Gemini model to use.
+        file (types.File): The uploaded file object.
+        filename (str): Name of the file (used for error reporting).
+
+    Returns:
+        dict: A dictionary containing the analysis result (stock_name, recommendation, etc.)
+              or an error message.
+    """
     prompt = """
     You are a Senior Portfolio Manager. Analyze the attached stock report (focusing on the first 3 pages and the "Formulate the Recommendation" section).
 
@@ -81,6 +143,15 @@ def analyze_report(client, model_name, file, filename):
         return {"error": str(e), "stock_name": filename}
 
 def load_processed_files(results_file):
+    """
+    Loads the state of previously processed files to enable resuming.
+
+    Args:
+        results_file (str): Path to the JSONL results file.
+
+    Returns:
+        tuple: A set of processed filenames and a list of existing result dictionaries.
+    """
     processed = set()
     results = []
     if os.path.exists(results_file):
@@ -100,7 +171,12 @@ def save_result(result, results_file):
         f.write(json.dumps(result) + "\n")
 
 def print_table(data):
-    """Prints a simple table."""
+    """
+    Prints a formatted summary table of analysis results to the console.
+
+    Args:
+        data (list): List of analysis result dictionaries.
+    """
     if not data:
         return
 
@@ -123,6 +199,17 @@ def print_table(data):
     print("="*120 + "\n")
 
 def process_file_wrapper(args):
+    """
+    Worker function for processing a single file in a thread.
+
+    Handles the full lifecycle: Client setup -> Upload -> Wait -> Analyze -> Cleanup.
+    
+    Args:
+        args (tuple): A tuple containing (filename, target_dir, model_name).
+
+    Returns:
+        dict: The analysis result or an error dictionary.
+    """
     filename, target_dir, model_name = args
     api_key = os.environ.get("GEMINI_API_KEY")
     client = genai.Client(api_key=api_key)
@@ -154,7 +241,18 @@ from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 
 def sanitize_text(text):
-    """Sanitizes text to remove distinct unicode characters not supported by Latin-1."""
+    """
+    Sanitizes text for PDF generation, removing incompatible Unicode characters.
+    
+    Replaces common special characters (dashes, quotes) with Latin-1 compatible equivalents
+    and forcefully encodes/decodes to remove remaining unsupported characters.
+
+    Args:
+        text (str): Input text.
+
+    Returns:
+        str: Sanitized text safe for fpdf2 (Latin-1).
+    """
     if not isinstance(text, str):
         return str(text)
     replacements = {
@@ -173,7 +271,16 @@ def sanitize_text(text):
     return text.encode('latin-1', 'replace').decode('latin-1')
 
 def save_to_formats(results, output_dir):
-    """Saves results to Excel and PDF formats."""
+    """
+    Exports the aggregated results to Excel and PDF formats.
+
+    Creates a timestamped Excel file and a formatted PDF report with color-coded
+    recommendations (Green for BUY, Red for SELL).
+
+    Args:
+        results (list): List of analysis result dictionaries.
+        output_dir (str): Directory where output files will be saved.
+    """
     if not results:
         return
         
@@ -310,6 +417,12 @@ def save_to_formats(results, output_dir):
         print(f"Failed to save PDF: {e}")
 
 def main():
+    """
+    Main execution entry point.
+
+    Parses command-line arguments, sets up the worker pool, and orchestrates 
+    the batch analysis of PDF reports.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("target_dir", help="Directory containing PDF reports")
     parser.add_argument("--model", default=DEFAULT_MODEL_NAME, help="Gemini model name")
