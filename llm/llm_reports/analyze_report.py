@@ -499,6 +499,7 @@ if __name__ == "__main__":
     parser.add_argument("--model", default=DEFAULT_MODEL_NAME, help=f"Gemini model to use (default: {DEFAULT_MODEL_NAME})")
     
     args = parser.parse_args()
+    print("\n using model: ", args.model)
     
     if os.path.isdir(args.path):
         analyze_folder(args.path, args.model)

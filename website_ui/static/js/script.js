@@ -260,7 +260,7 @@ async function analyzeStock(analysisType = 'all') {
             displayResults(data, analysisType);
 
             if (data.volume) {
-                displayVolumeAnalysis(data.volume);
+                displayVolumeAnalysis(data);  // Pass full data object
             }
 
             // Save last analyzed stock to localStorage
@@ -1450,9 +1450,10 @@ function displayVolumeAnalysis(data) {
     const signalsList = document.getElementById('volumeSignalsList');
     const noSignals = document.getElementById('volumeNoSignals');
 
-    if (chartImg && data.chart_image) {
-        console.log("Setting chart image, length:", data.chart_image.length);
-        chartImg.src = 'data:image/png;base64,' + data.chart_image;
+    // Access volume data from data.volume
+    if (chartImg && data.volume && data.volume.chart_image) {
+        console.log("Setting chart image, length:", data.volume.chart_image.length);
+        chartImg.src = 'data:image/png;base64,' + data.volume.chart_image;
         chartImg.style.display = 'block';
     } else if (chartImg) {
         console.log("No chart image found in data");
@@ -1461,7 +1462,7 @@ function displayVolumeAnalysis(data) {
 
     if (signalsList) {
         signalsList.innerHTML = '';
-        const divs = data.divergences || [];
+        const divs = data.volume ? (data.volume.divergences || []) : [];
 
         if (divs.length === 0) {
             if (noSignals) noSignals.style.display = 'block';
@@ -1504,5 +1505,18 @@ function displayVolumeAnalysis(data) {
                 signalsList.appendChild(item);
             });
         }
+    }
+
+    // Display candlestick classification chart
+    const candlestickImg = document.getElementById('candlestickChartImage');
+
+    if (data.candlestick && data.candlestick.error) {
+        console.error("[CANDLESTICK] Server returned error:", data.candlestick.error);
+        // Optionally show error in chart area replacement or toast
+    } else if (candlestickImg && data.candlestick && data.candlestick.chart_image) {
+        candlestickImg.src = 'data:image/png;base64,' + data.candlestick.chart_image;
+        candlestickImg.style.display = 'block';
+    } else if (candlestickImg) {
+        candlestickImg.style.display = 'none';
     }
 }

@@ -74,6 +74,7 @@ from rsi_volume_divergence import run_analysis as run_rsi_volume_analysis
 from volatility_squeeze_analysis import run_analysis as run_volatility_squeeze_analysis
 from rs_analysis import run_analysis as run_rs_analysis
 from volume_analysis import run_analysis as run_volume_analysis
+from candlestick_classification import run_analysis as run_candlestick_analysis
 from sector_analysis import run_analysis as run_sector_analysis
 from stock_in_sector_analysis import run_analysis as run_stock_in_sector_analysis
 from batch_analysis import run_batch_analysis
@@ -408,6 +409,7 @@ def analyze():
                 'chart_image': donchian_image_base64
             }
 
+
         # Run Volume Analysis
         if analysis_type in ['all', 'volume']:
             print(f"Starting Volume analysis for {ticker}...")
@@ -432,6 +434,36 @@ def analyze():
             except Exception as e:
                 print(f"Error in Volume analysis: {e}")
                 traceback.print_exc()
+
+            # Run Candlestick Classification Analysis (integrated with volume)
+            print(f"Starting Candlestick Classification for {ticker}...")
+            try:
+                candlestick_config = data.get('candlestick_config', {})
+                candlestick_result = run_candlestick_analysis(
+                    ticker=ticker, 
+                    show_plot=False, 
+                    config=candlestick_config, 
+                    df=df, 
+                    return_figure=False
+                )
+                
+                if candlestick_result['success']:
+                    print(f"Candlestick classification result: {candlestick_result['success']}")
+                    response_data['candlestick'] = {
+                        'latest_classification': candlestick_result.get('latest_classification'),
+                        'recent_trend_score': candlestick_result.get('recent_trend_score'),
+                        'classification_distribution': candlestick_result.get('classification_distribution', {}),
+                        'chart_image': candlestick_result.get('chart_image')
+                    }
+                else:
+                    error_msg = candlestick_result.get('error', 'Unknown error')
+                    print(f"Candlestick classification failed: {error_msg}")
+                    response_data['candlestick'] = {'error': error_msg}
+            except Exception as e:
+                print(f"Error in Candlestick classification: {e}")
+                traceback.print_exc()
+                response_data['candlestick'] = {'error': str(e)}
+
 
         # Run RSI Divergence Analysis
         if analysis_type in ['all', 'rsi']:

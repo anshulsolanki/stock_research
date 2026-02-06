@@ -101,6 +101,8 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 from datetime import datetime, timedelta
+from fpdf import FPDF
+
 
 # Add project root to path to import analysis modules
 # From batch_reports/scripts, we need to go up two levels to reach stock_research/
@@ -466,6 +468,82 @@ def print_results_table(result):
     print(df_sig.to_string(index=False))
     print(f"\n{'='*50}\n")
 
+def save_batch_pdf(rows, filename):
+    """
+    Saves the batch analysis results to a PDF file.
+    
+    Args:
+        rows (list): List of dictionaries containing row data.
+        filename (str): Output PDF filename.
+    """
+    class PDF(FPDF):
+        def header(self):
+            self.set_font('helvetica', 'B', 15)
+            self.cell(0, 10, 'Mean Reversion Sell Strategy Report', align='C')
+            self.ln(5)
+            self.set_font('helvetica', '', 10)
+            self.cell(0, 10, f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', align='C')
+            self.ln(10)
+            
+            # Table Header
+            self.set_font('helvetica', 'B', 10)
+            self.set_fill_color(240, 240, 240)
+            headers = ["Ticker", "Status", "RSI", "Bollinger", "Mismatch", "Signals"]
+            widths = [30, 25, 15, 35, 25, 60]
+            
+            for i, h in enumerate(headers):
+                self.cell(widths[i], 10, h, border=1, fill=True, align='C')
+            self.ln()
+            
+        def footer(self):
+            self.set_y(-15)
+            self.set_font('helvetica', 'I', 8)
+            self.cell(0, 10, f'Page {self.page_no()}/{{nb}}', align='C')
+
+    pdf = PDF()
+    pdf.alias_nb_pages()
+    pdf.add_page()
+    pdf.set_font('helvetica', '', 9)
+    
+    widths = [30, 25, 15, 35, 25, 60]
+    
+    for row in rows:
+        # Ticker
+        pdf.cell(widths[0], 10, row['Ticker'], border=1)
+        
+        # Status (Color Red if SELL_WATCH)
+        if row['Status'] == "SELL_WATCH":
+            pdf.set_text_color(220, 50, 50)
+            pdf.set_font('helvetica', 'B', 9)
+        else:
+            pdf.set_text_color(0, 0, 0)
+            pdf.set_font('helvetica', '', 9)
+            
+        pdf.cell(widths[1], 10, row['Status'], border=1, align='C')
+        
+        # Reset color/font for rest
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_font('helvetica', '', 9)
+        
+        pdf.cell(widths[2], 10, str(row['RSI']), border=1, align='C')
+        pdf.cell(widths[3], 10, row['Bollinger'], border=1, align='C')
+        pdf.cell(widths[4], 10, row['Mismatch'], border=1, align='C')
+        
+        # Signals (Truncate if too long)
+        signals = row['Signals']
+        if len(signals) > 35:
+            signals = signals[:32] + "..."
+        pdf.cell(widths[5], 10, signals, border=1)
+        
+        pdf.ln()
+
+    try:
+        pdf.output(filename)
+        print(f"\n[+] PDF Report saved to: {filename}")
+    except Exception as e:
+        print(f"\n[!] Error saving PDF: {e}")
+
+
 def analyze_batch(tickers_file='tickers.txt'):
     """
     Runs Mean Reversion analysis on multiple tickers from a file.
@@ -521,6 +599,8 @@ def analyze_batch(tickers_file='tickers.txt'):
     print(f"{'TICKER':<15} | {'STATUS':<12} | {'RSI':<8} | {'BB':<15} | {'MISMATCH':<10} | {'SIGNALS'}")
     print(f"{'='*80}")
 
+    results_data = []
+
     for ticker in tickers:
         try:
             res = analyze_ticker(ticker)
@@ -544,15 +624,31 @@ def analyze_batch(tickers_file='tickers.txt'):
                 
                 print(f"{ticker:<15} | {status_icon} {res['status'][:4]:<9} | {rsi_val:<8} | {bb_pos:<15} | {mismatch:<10} | {signals_str}")
                 
+                # Collect for PDF
+                results_data.append({
+                    "Ticker": ticker,
+                    "Status": res['status'],
+                    "RSI": rsi_val,
+                    "Bollinger": bb_pos,
+                    "Mismatch": mismatch,
+                    "Signals": signals_str
+                })
+
                 # Print full detail only if Sell Watch
                 if res['status'] == "SELL_WATCH":
-                     # print(f"\n   -> {ticker} is a potential SELL candidate!")
                      pass
 
         except Exception as e:
             print(f"{ticker:<15} | ERROR: {str(e)[:40]}")
 
     print(f"{'='*80}\n")
+    
+    # Save PDF if we have results
+    if results_data:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        pdf_filename = f"mean_reversion_report_{timestamp}.pdf"
+        save_batch_pdf(results_data, pdf_filename)
+
 
 if __name__ == "__main__":
     import json
