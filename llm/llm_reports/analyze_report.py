@@ -1,3 +1,35 @@
+# -------------------------------------------------------------------------------
+# Project: Stock Analysis (https://github.com/anshulsolanki/stock_analysis)
+# Author:  Anshul Solanki
+# License: MIT License
+# 
+# DISCLAIMER: 
+# This software is for educational purposes only. It is not financial advice.
+# Stock trading involves risks. The author is not responsible for any losses.
+# -------------------------------------------------------------------------------
+
+"""
+Copyright (c) 2026 Anshul Solanki
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
 """
 Stock Report Analysis Tool using Google Gemini
 
@@ -28,6 +60,8 @@ import markdown
 from fpdf import FPDF
 from io import BytesIO
 from pypdf import PdfWriter
+import glob
+from prompts import STRATEGIC_ANALYSIS_PROMPT, CANDLESTICK_ANALYSIS_PROMPT, NEWS_ANALYSIS_PROMPT_TEMPLATE
 
 # Load environment variables
 load_dotenv()
@@ -115,11 +149,20 @@ def save_analysis_to_pdf(text, output_path):
         def header(self):
             self.set_font("helvetica", "B", 16)
             self.set_text_color(44, 62, 80)
-            title = "Gemini Stock Analysis Report"
+            title = "Stock Analysis Report"
             width = self.get_string_width(title) + 6
             self.set_x((210 - width) / 2)
             self.cell(width, 10, title, border=0, new_x="LMARGIN", new_y="NEXT", align="C")
-            self.ln(5)
+            
+            # Add Copyright Subtitle
+            self.set_font("helvetica", "I", 10)
+            self.set_text_color(128, 128, 128)
+            copyright_text = f"© {time.strftime('%Y')} Stock Research. All Rights Reserved."
+            sub_width = self.get_string_width(copyright_text) + 6
+            self.set_x((210 - sub_width) / 2)
+            self.cell(sub_width, 6, copyright_text, border=0, new_x="LMARGIN", new_y="NEXT", align="C")
+            
+            self.ln(3)
             self.set_draw_color(44, 62, 80)
             self.set_line_width(0.5)
             self.line(10, self.get_y(), 200, self.get_y())
@@ -203,8 +246,8 @@ def save_analysis_to_pdf(text, output_path):
             try:
                 pdf.write_html(simple_html)
             except Exception as e2:
-                 # If simplified HTML also fails, we will fall through to the text-only fallback which is handled in the outer block
-                 raise e2
+                # If simplified HTML also fails, fall through to the text-only fallback which is handled in the outer block
+                raise e2
         
         # Save
         print(f"Saving analysis to PDF: {output_path}...")
@@ -263,8 +306,8 @@ def upload_to_gemini(client, path, mime_type="application/pdf"):
         # client.files.upload(path=...) returns a File object
         file = client.files.upload(file=path) 
     except Exception as e:
-         print(f"Upload failed: {e}")
-         sys.exit(1)
+        print(f"Upload failed: {e}")
+        sys.exit(1)
 
     print(f"File uploaded: {file.display_name} ({file.uri})")
     return file
@@ -317,151 +360,139 @@ def analyze_stock_report(pdf_path, model_name=DEFAULT_MODEL_NAME):
     # 2. Wait for processing
     wait_for_files_active(client, [pdf_file])
     
-    # 3. Generate Content
-    prompt = """
-    Act as a seasoned Positional Equity Trader specializing in intermediate-term trends. Your goal is to identify trade setups with a probability of 5%-15% upside over a 1-4 month time horizon.
-
-    Please analyze the attached report using a step-by-step approach:
-
-    Step 1: Audit the Data.
-    Please evaluate the data quality in a bulleted list format:
-    * **Data Present:** (e.g., daily charts, moving averages, RSI).
-    * **Data Missing:** (e.g., weekly charts, volume analysis).
-    * **Confidence Level:** (High/Medium/Low) and brief explanation.
-
-    Step 2: Analyze the Setup.
-    Review the price structure, trend direction, and momentum. Look for confluence that supports a multi-month move.
-
-    Step 3: Formulate the Recommendation.
-    Based on Step 2, advise if I should enter this stock now.
-
-    If YES: Provide the following in a bulleted list:
-    * **Entry Price:** (Exact level)
-    * **Stop Loss:** (Hard level)
-    * **Take Profit:** (Target level)
-
-    If NO: Explain why invalid. If it's a potential setup, provide a bulleted list for the conditional plan:
-    * **Condition to Buy:** (e.g., Close above EMA 50)
-    * **Entry Price:** (Hypothetical trigger)
-    * **Stop Loss:** (Hypothetical risk)
-    * **Take Profit:** (Hypothetical target)
-    Please keep your tone objective, professional, and risk-averse.
-    """
-    
-    print("\nSending request to Gemini (this may take a moment)...")
+    # 3. Generate Strategic Analysis
+    print("\nSending report analysis request to Gemini (this may take a moment)...")
+    strategic_text = "Strategic analysis unavailable due to generation error."
     try:
-        # client.models.generate_content
-        response = client.models.generate_content(
+        strategic_response = client.models.generate_content(
             model=model_name,
-            contents=[pdf_file, prompt],
+            contents=[pdf_file, STRATEGIC_ANALYSIS_PROMPT],
             config=types.GenerateContentConfig(
                 temperature=1.0,
                 max_output_tokens=8192
             )
         )
+        strategic_text = strategic_response.text
         
         print("\n" + "="*80)
-        print("GEMINI ANALYSIS REPORT")
+        print("GEMINI STRATEGIC ANALYSIS REPORT")
         print("="*80 + "\n")
-        print(response.text)
+        print(strategic_text)
         print("\n" + "="*80)
-        
-        # 5. News & Analyst Targets
-        base_name = os.path.splitext(os.path.basename(pdf_path))[0]
-        try:
-            parts = base_name.split('_')
-            # Check if format matches Stock_Report_<SYMBOL>...
-            if len(parts) >= 3 and parts[0] == "Stock" and parts[1] == "Report":
-                stock_name = parts[2]
-            else:
-                # Fallback: Just use the filename
-                stock_name = base_name
-        except Exception:
-            stock_name = base_name
+    except Exception as e:
+        print(f"\nError generating strategic analysis: {e}")
 
-        news_prompt = f"""
-        OK , now Act as a stock research analyst working in investment firm. Your goal is to search for latest news and information on stock: {stock_name}.
-        Please search on internet and anywhere you can answer following:
-                
-        1) what are the latest news for {stock_name} this week?
-        2) Any upgrade or downgrade from brokerages for {stock_name}?
-        3) Any other news directly or indirectly impacting {stock_name}?
-        4) What are the latest targets from analysts community and brokerages for {stock_name}? Provide this as a Markdown Table.
-        
-        Please format the news bullets clearly and ensure the targets are in a table.
-        """
-        
-        print(f"\nSending request for News & Analyst Targets for {stock_name}...")
-        
-        try:
-            # Google Search Tool using GoogleGenAI SDK V2
-            google_search_tool = types.Tool(
-                google_search=types.GoogleSearch()
+    # 4. Generate Candlestick Analysis
+    print("\nSending Candlestick Classification request to Gemini (this may take a moment)...")
+    candlestick_text = "Candlestick analysis unavailable due to generation error."
+    try:
+        candlestick_response = client.models.generate_content(
+            model=model_name,
+            contents=[pdf_file, CANDLESTICK_ANALYSIS_PROMPT],
+            config=types.GenerateContentConfig(
+                temperature=1.0,
+                max_output_tokens=8192
             )
-            
-            # Note regarding model: 'gemini-1.5-pro' generally supports tools. 
-            # If default model fails with tools, we might need a fallback.
-            news_response = client.models.generate_content(
-                model=model_name,
-                contents=news_prompt,
-                config=types.GenerateContentConfig(
-                    tools=[google_search_tool],
-                    response_modalities=["TEXT"],
-                )
-            )
-            news_text = news_response.text
+        )
+        candlestick_text = candlestick_response.text
 
-        except Exception as tool_error:
-            print(f"Warning: Could not use Google Search tool: {tool_error}. Falling back to standard generation.")
+        print("\n" + "="*80)
+        print("GEMINI CANDLESTICK ANALYSIS REPORT")
+        print("="*80 + "\n")
+        print(candlestick_text)
+        print("\n" + "="*80)
+    except Exception as e:
+        print(f"\nError analyzing candlestick chart: {e}")
+
+    # 5. Extract Stock Name & Fetch News/Analyst Targets
+    base_name = os.path.splitext(os.path.basename(pdf_path))[0]
+    stock_name = base_name
+    try:
+        parts = base_name.split('_')
+        # Check if format matches Stock_Report_<SYMBOL>...
+        if len(parts) >= 3 and parts[0] == "Stock" and parts[1] == "Report":
+            stock_name = parts[2]
+    except Exception:
+        pass
+
+    news_prompt = NEWS_ANALYSIS_PROMPT_TEMPLATE.format(stock_name=stock_name)
+    print(f"\nSending request for News & Analyst Targets for {stock_name}...")
+    
+    news_text = "News & Analyst Targets unavailable due to generation error."
+    try:
+        # Google Search Tool using GoogleGenAI SDK V2
+        google_search_tool = types.Tool(
+            google_search=types.GoogleSearch()
+        )
+        
+        news_response = client.models.generate_content(
+            model=model_name,
+            contents=news_prompt,
+            config=types.GenerateContentConfig(
+                tools=[google_search_tool],
+                response_modalities=["TEXT"],
+            )
+        )
+        news_text = news_response.text
+    except Exception as tool_error:
+        print(f"Warning: Could not use Google Search tool: {tool_error}. Falling back to standard generation.")
+        try:
             news_response = client.models.generate_content(
                 model=model_name,
                 contents=news_prompt
             )
             news_text = news_response.text
+        except Exception as standard_gen_error:
+            print(f"\nError generating fallback news analysis: {standard_gen_error}")
 
-        print("\n" + "="*80)
-        print("NEWS & ANALYST TARGETS")
-        print("="*80 + "\n")
-        print(news_text)
-        print("\n" + "="*80)
-        
-        # Combine reports
-        full_report = response.text + "\n\n" + "# News & Analyst Targets\n" + news_text
-        
-        output_pdf_path = f"Gemini_Analysis_{base_name}.pdf"
-        save_analysis_to_pdf(full_report, output_pdf_path)
-        
-        if not os.path.exists(output_pdf_path):
-             print(f"Skipping merge: {output_pdf_path} was not generated.")
-        else:
-            try:
-                print(f"Merging original report into {output_pdf_path}...")
-                temp_gemini_path = f"temp_{output_pdf_path}"
-                os.rename(output_pdf_path, temp_gemini_path)
-                
-                merger = PdfWriter()
-                # 1. Gemini Analysis
-                merger.append(temp_gemini_path)
-                # 2. Original Report
-                merger.append(pdf_path)
-                
-                # Write combined PDF
-                merger.write(output_pdf_path)
-                merger.close()
-                
-                # Cleanup temp file
-                os.remove(temp_gemini_path)
-                print(f"Successfully merged original report. Final output: {output_pdf_path}")
-                
-            except Exception as merge_error:
-                print(f"Error merging PDFs: {merge_error}")
-                # Restore original if merge fails
-                if os.path.exists(temp_gemini_path):
-                    os.rename(temp_gemini_path, output_pdf_path)
-        
-    except Exception as e:
-        print(f"\nError generating content: {e}")
-        # Note: clean up file if possible?
+    print("\n" + "="*80)
+    print("NEWS & ANALYST TARGETS")
+    print("="*80 + "\n")
+    print(news_text)
+    print("\n" + "="*80)
+    
+    # 6. Combine all generated reports into a single formatted Markdown string
+    full_report = f"# Strategic Trading Analysis\n{strategic_text}" \
+                  f"\n\n# Candlestick Classification Analysis\n{candlestick_text}" \
+                  f"\n\n# News & Analyst Targets\n{news_text}"
+    
+    # Save the output PDF in the same directory as the input PDF
+    output_dir = os.path.dirname(pdf_path)
+    output_filename = f"Detailed_Analysis_{base_name}.pdf"
+    output_pdf_path = os.path.join(output_dir, output_filename) if output_dir else output_filename
+    
+    save_analysis_to_pdf(full_report, output_pdf_path)
+    
+    # 7. Merge the newly generated Gemini Analysis PDF with the original Stock Report PDF
+    if not os.path.exists(output_pdf_path):
+        print(f"Skipping merge: {output_pdf_path} was not generated.")
+    else:
+        try:
+            print(f"Merging original report into {output_pdf_path}...")
+            temp_filename = f"temp_{output_filename}"
+            temp_gemini_path = os.path.join(output_dir, temp_filename) if output_dir else temp_filename
+            os.rename(output_pdf_path, temp_gemini_path)
+            
+            merger = PdfWriter()
+            
+            # Append Gemini Analysis first
+            merger.append(temp_gemini_path)
+            # Append Original Report second
+            merger.append(pdf_path)
+            
+            # Write the combined PDF back out to the output path
+            merger.write(output_pdf_path)
+            merger.close()
+            
+            # Cleanup the intermediate/temporary file
+            os.remove(temp_gemini_path)
+            print(f"Successfully merged original report. Final output: {output_pdf_path}")
+            
+        except Exception as merge_error:
+            print(f"Error merging PDFs: {merge_error}")
+            # Restore original file state if merge fails
+            if os.path.exists(temp_gemini_path):
+                os.rename(temp_gemini_path, output_pdf_path)
     
 def analyze_folder(folder_path, model_name=DEFAULT_MODEL_NAME):
     """

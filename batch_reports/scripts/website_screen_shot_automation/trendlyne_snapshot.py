@@ -34,13 +34,19 @@ import argparse
 import time
 import os
 from playwright.sync_api import sync_playwright
+from dotenv import load_dotenv
 
 # Get the directory where this script is located
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Root directory is 3 levels up from website_screen_shot_automation
+ROOT_DIR = os.path.join(SCRIPT_DIR, '..', '..', '..')
+
+# Load environment variables from .env file in root directory
+load_dotenv(os.path.join(ROOT_DIR, '.env'))
 
 # Config parameters for login
-USERNAME = "your_username_here" 
-PASSWORD = "your_password_here"
+USERNAME = os.getenv("TRENDLYNE_USERNAME")
+PASSWORD = os.getenv("TRENDLYNE_PASSWORD")
 
 def login_if_needed(page):
     """
@@ -67,9 +73,9 @@ def login_if_needed(page):
         page.wait_for_selector("#id_login")
         
         # Fill credentials
-        # Check if USERNAME/PASSWORD are set to actual values
-        if USERNAME == "your_username_here" or PASSWORD == "your_password_here":
-            print("WARNING: Default credentials found. Please update USERNAME and PASSWORD constants in the script.")
+        # Check if USERNAME/PASSWORD are set
+        if not USERNAME or not PASSWORD:
+            print("WARNING: TRENDLYNE_USERNAME or TRENDLYNE_PASSWORD not found in .env file.")
             return
 
         print(f"Logging in as {USERNAME}...")

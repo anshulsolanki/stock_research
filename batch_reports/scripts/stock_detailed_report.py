@@ -72,6 +72,7 @@ try:
     import rs_analysis
     import volume_analysis
     import multi_timeframe_analysis
+    import candlestick_classification
     from website_screen_shot_automation.trendlyne_snapshot import get_trendlyne_snapshots
 except ImportError as e:
     print(f"Error importing modules: {e}")
@@ -821,6 +822,44 @@ def render_volume_analysis(pdf, ticker, df=None):
         print(f"    Error in Volume Analysis: {e}")
 
 
+def render_candlestick_classification(pdf, ticker, df=None):
+    """
+    Runs Candlestick Classification and adds summary + chart to PDF.
+    """
+    try:
+        print("    - Candlestick Classification")
+        
+        # Filter for last 1 year of data if df is provided
+        local_df = df
+        if local_df is not None:
+            cutoff_date = local_df.index[-1] - datetime.timedelta(days=365)
+            local_df = local_df[local_df.index > cutoff_date].copy()
+
+        res = candlestick_classification.run_analysis(ticker, show_plot=False, df=local_df, return_figure=True)
+        
+        if res.get('success'):
+            summary = {}
+            summary['═══ CANDLESTICK CLASSIFICATION ═══'] = ''
+            
+            summary['Latest Classification'] = res.get('latest_classification', 'Unknown')
+            summary['Recent Trend Score (10-day avg)'] = f"{res.get('recent_trend_score', 0):.2f}"
+            
+            summary[''] = '' # Spacer
+            summary['Distribution'] = ''
+            
+            classification_dist = res.get('classification_distribution', {})
+            for cat, count in classification_dist.items():
+                summary[f'  {cat}'] = str(count)
+
+            render_summary_page(pdf, f"{ticker} - Candlestick Classification Summary", summary)
+            
+            if res.get('figure'):
+                add_analysis_chart(pdf, res['figure'], f"{ticker} - Candlestick Classification Analysis")
+                
+    except Exception as e:
+        print(f"    Error in Candlestick Classification: {e}")
+
+
 def render_technical_indicators(pdf, ticker, df=None):
     """
     Renders all technical indicators in the specified order:
@@ -830,6 +869,8 @@ def render_technical_indicators(pdf, ticker, df=None):
     4. MACD
     5. Volatility Squeeze
     6. RSI-Volume Divergence
+    7. Volume Analysis
+    8. Candlestick Classification
     """
     print("  Running Technical Analysis...")
     render_ema_crossover(pdf, ticker, df=df)
@@ -839,6 +880,7 @@ def render_technical_indicators(pdf, ticker, df=None):
     render_volatility_squeeze(pdf, ticker, df=df)
     render_rsi_volume_divergence(pdf, ticker, df=df)
     render_volume_analysis(pdf, ticker, df=df)
+    render_candlestick_classification(pdf, ticker, df=df)
 
 
 def render_multi_timeframe_analysis(pdf, ticker, df=None):

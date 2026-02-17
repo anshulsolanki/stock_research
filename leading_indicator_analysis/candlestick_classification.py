@@ -511,7 +511,7 @@ def main():
     args = parser.parse_args()
     
     ticker = args.ticker
-    if '.' not in ticker:
+    if '.' not in ticker and '^' not in ticker:
         ticker = f"{ticker.upper()}.NS"
     else:
         ticker = ticker.upper()
