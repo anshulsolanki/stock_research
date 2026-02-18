@@ -84,3 +84,4 @@ llm/experiment_garage/
 
 #files
 experiments_space/upload_to_drive.py
+fundamental_analysis/analysis_errors.json

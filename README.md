@@ -199,6 +199,7 @@ Located in `fundamental_analysis/`
   - 📊 **4-Year Trends**: Revenue, Profit, ROE, EPS growth (1Y vs 3Y CAGR)
   - 📉 **6-Quarter Trends**: Quarter-over-quarter growth analysis
   - 💰 **Valuation**: PE Ratio comparison vs Industry averages
+  - 🚀 **High-Performance**: Parallel batch processing with built-in rate limit handling
 - **Use Case**: Validate technical setups with fundamental strength
 
 ## 📊 Market Analysis Tools
@@ -318,9 +319,12 @@ python batch_reports/scripts/run_weekly_orchestrator.py
 ### Standalone Python Scripts
 
 **Fundamental Analysis:**
-```python
-from fundamental_analysis.fundamental_analysis import analyze_revenue_growth_4y
-print(analyze_revenue_growth_4y("AAPL"))
+```bash
+# Single Ticker
+python fundamental_analysis/fundamental_analysis.py
+
+# Batch Analysis (Parallel)
+python fundamental_analysis/fundamental_analysis.py data/nifty_500.json
 ```
 
 **Technical Analysis:**
@@ -404,5 +408,5 @@ For personal use only.
 ---
 Made with ❤️ for stock market enthusiasts and technical analysts
 
-**Last Updated**: January 20, 2026  
-**Version**: 2.5
+**Last Updated**: February 17, 2026  
+**Version**: 2.6

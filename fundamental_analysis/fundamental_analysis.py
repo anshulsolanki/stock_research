@@ -81,7 +81,21 @@ import numpy as np
 from datetime import datetime
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+import yfinance as yf
+import pandas as pd
+import numpy as np
+from datetime import datetime
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 import warnings
+import json
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
 
 # Suppress warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -95,36 +109,53 @@ FUNDAMENTAL_CONFIG = {
 }
 
 
+import time
+
 # ============================================================================
 # HELPER FUNCTIONS FOR DATA FETCHING
 # ============================================================================
 
-def fetch_financials(ticker):
+def fetch_financials(ticker, retries=3, delay=1):
     """
     Fetch annual financial statements for a ticker.
+    Includes retry logic to handle network issues or rate limits.
     
     Parameters:
     -----------
     ticker : str
         Stock ticker symbol
+    retries : int
+        Number of retries
+    delay : int
+        Delay between retries in seconds
         
     Returns:
     --------
     dict
         Dictionary containing income_statement, balance_sheet, cashflow, and info
     """
-    try:
-        stock = yf.Ticker(ticker)
-        return {
-            'income_statement': stock.financials,
-            'balance_sheet': stock.balance_sheet,
-            'cashflow': stock.cashflow,
-            'info': stock.info,
-            'quarterly_income': stock.quarterly_financials,
-            'quarterly_balance': stock.quarterly_balance_sheet
-        }
-    except Exception as e:
-        return {'error': str(e)}
+    attempt = 0
+    last_error = None
+    
+    while attempt <= retries:
+        try:
+            stock = yf.Ticker(ticker)
+            # Accessing properties triggers the download
+            return {
+                'income_statement': stock.financials,
+                'balance_sheet': stock.balance_sheet,
+                'cashflow': stock.cashflow,
+                'info': stock.info,
+                'quarterly_income': stock.quarterly_financials,
+                'quarterly_balance': stock.quarterly_balance_sheet
+            }
+        except Exception as e:
+            last_error = e
+            attempt += 1
+            if attempt <= retries:
+                time.sleep(delay * attempt) # Exponential backoffish
+            
+    return {'error': str(last_error)}
 
 
 def calculate_growth_rate(values_dict, periods=['1Y', '3Y']):
@@ -209,7 +240,7 @@ def check_growth_trend(growth_rates):
 # LONG-TERM ANALYSIS FUNCTIONS (4 YEARS)
 # ============================================================================
 
-def analyze_revenue_growth_4y(ticker):
+def analyze_revenue_growth_4y(ticker, data=None):
     """
     Analyze revenue growth over the last 4 years.
     
@@ -221,6 +252,8 @@ def analyze_revenue_growth_4y(ticker):
     -----------
     ticker : str
         Stock ticker symbol
+    data : dict, optional
+        Pre-fetched financial data to avoid redundant API calls
         
     Returns:
     --------
@@ -240,7 +273,8 @@ def analyze_revenue_growth_4y(ticker):
         }
     """
     try:
-        data = fetch_financials(ticker)
+        if data is None:
+            data = fetch_financials(ticker)
         
         if 'error' in data:
             return {'success': False, 'error': data['error']}
@@ -288,7 +322,7 @@ def analyze_revenue_growth_4y(ticker):
         return {'success': False, 'error': str(e)}
 
 
-def analyze_profit_growth_4y(ticker):
+def analyze_profit_growth_4y(ticker, data=None):
     """
     Analyze profit growth over the last 4 years.
     
@@ -300,6 +334,8 @@ def analyze_profit_growth_4y(ticker):
     -----------
     ticker : str
         Stock ticker symbol
+    data : dict, optional
+        Pre-fetched financial data to avoid redundant API calls
         
     Returns:
     --------
@@ -319,7 +355,8 @@ def analyze_profit_growth_4y(ticker):
         }
     """
     try:
-        data = fetch_financials(ticker)
+        if data is None:
+            data = fetch_financials(ticker)
         
         if 'error' in data:
             return {'success': False, 'error': data['error']}
@@ -367,7 +404,7 @@ def analyze_profit_growth_4y(ticker):
         return {'success': False, 'error': str(e)}
 
 
-def analyze_roe_growth_4y(ticker):
+def analyze_roe_growth_4y(ticker, data=None):
     """
     Analyze ROE (Return on Equity) growth over the last 4 years.
     
@@ -379,6 +416,8 @@ def analyze_roe_growth_4y(ticker):
     -----------
     ticker : str
         Stock ticker symbol
+    data : dict, optional
+        Pre-fetched financial data to avoid redundant API calls
         
     Returns:
     --------
@@ -398,7 +437,8 @@ def analyze_roe_growth_4y(ticker):
         }
     """
     try:
-        data = fetch_financials(ticker)
+        if data is None:
+            data = fetch_financials(ticker)
         
         if 'error' in data:
             return {'success': False, 'error': data['error']}
@@ -456,7 +496,7 @@ def analyze_roe_growth_4y(ticker):
         return {'success': False, 'error': str(e)}
 
 
-def analyze_eps_growth_4y(ticker):
+def analyze_eps_growth_4y(ticker, data=None):
     """
     Analyze EPS (Earnings Per Share) growth over the last 4 years.
     
@@ -468,6 +508,8 @@ def analyze_eps_growth_4y(ticker):
     -----------
     ticker : str
         Stock ticker symbol
+    data : dict, optional
+        Pre-fetched financial data to avoid redundant API calls
         
     Returns:
     --------
@@ -487,7 +529,8 @@ def analyze_eps_growth_4y(ticker):
         }
     """
     try:
-        data = fetch_financials(ticker)
+        if data is None:
+            data = fetch_financials(ticker)
         
         if 'error' in data:
             return {'success': False, 'error': data['error']}
@@ -538,7 +581,7 @@ def analyze_eps_growth_4y(ticker):
         return {'success': False, 'error': str(e)}
 
 
-def analyze_pe_vs_industry(ticker):
+def analyze_pe_vs_industry(ticker, data=None):
     """
     Analyze PE ratio compared to industry average.
     
@@ -546,6 +589,8 @@ def analyze_pe_vs_industry(ticker):
     -----------
     ticker : str
         Stock ticker symbol
+    data : dict, optional
+        Pre-fetched financial data to avoid redundant API calls
         
     Returns:
     --------
@@ -564,8 +609,11 @@ def analyze_pe_vs_industry(ticker):
         }
     """
     try:
-        stock = yf.Ticker(ticker)
-        info = stock.info
+        if data and 'info' in data:
+            info = data['info']
+        else:
+            stock = yf.Ticker(ticker)
+            info = stock.info
         
         current_pe = info.get('trailingPE', None) or info.get('forwardPE', None)
         industry = info.get('industry', 'Unknown')
@@ -619,7 +667,7 @@ def analyze_pe_vs_industry(ticker):
 # SHORT-TERM ANALYSIS FUNCTIONS (6 QUARTERS)
 # ============================================================================
 
-def analyze_revenue_growth_6q(ticker):
+def analyze_revenue_growth_6q(ticker, data=None):
     """
     Analyze revenue growth over the last 6 quarters.
     
@@ -631,6 +679,8 @@ def analyze_revenue_growth_6q(ticker):
     -----------
     ticker : str
         Stock ticker symbol
+    data : dict, optional
+        Pre-fetched financial data to avoid redundant API calls
         
     Returns:
     --------
@@ -648,7 +698,8 @@ def analyze_revenue_growth_6q(ticker):
         }
     """
     try:
-        data = fetch_financials(ticker)
+        if data is None:
+            data = fetch_financials(ticker)
         
         if 'error' in data:
             return {'success': False, 'error': data['error']}
@@ -710,7 +761,7 @@ def analyze_revenue_growth_6q(ticker):
         return {'success': False, 'error': str(e)}
 
 
-def analyze_profit_growth_6q(ticker):
+def analyze_profit_growth_6q(ticker, data=None):
     """
     Analyze profit growth over the last 6 quarters.
     
@@ -722,6 +773,8 @@ def analyze_profit_growth_6q(ticker):
     -----------
     ticker : str
         Stock ticker symbol
+    data : dict, optional
+        Pre-fetched financial data to avoid redundant API calls
         
     Returns:
     --------
@@ -739,7 +792,8 @@ def analyze_profit_growth_6q(ticker):
         }
     """
     try:
-        data = fetch_financials(ticker)
+        if data is None:
+            data = fetch_financials(ticker)
         
         if 'error' in data:
             return {'success': False, 'error': data['error']}
@@ -801,7 +855,7 @@ def analyze_profit_growth_6q(ticker):
         return {'success': False, 'error': str(e)}
 
 
-def analyze_roe_growth_6q(ticker):
+def analyze_roe_growth_6q(ticker, data=None):
     """
     Analyze ROE growth over the last 6 quarters.
     
@@ -813,6 +867,8 @@ def analyze_roe_growth_6q(ticker):
     -----------
     ticker : str
         Stock ticker symbol
+    data : dict, optional
+        Pre-fetched financial data to avoid redundant API calls
         
     Returns:
     --------
@@ -830,7 +886,8 @@ def analyze_roe_growth_6q(ticker):
         }
     """
     try:
-        data = fetch_financials(ticker)
+        if data is None:
+            data = fetch_financials(ticker)
         
         if 'error' in data:
             return {'success': False, 'error': data['error']}
@@ -898,7 +955,7 @@ def analyze_roe_growth_6q(ticker):
         return {'success': False, 'error': str(e)}
 
 
-def analyze_eps_growth_6q(ticker):
+def analyze_eps_growth_6q(ticker, data=None):
     """
     Analyze EPS growth over the last 6 quarters.
     
@@ -910,6 +967,8 @@ def analyze_eps_growth_6q(ticker):
     -----------
     ticker : str
         Stock ticker symbol
+    data : dict, optional
+        Pre-fetched financial data to avoid redundant API calls
         
     Returns:
     --------
@@ -927,7 +986,8 @@ def analyze_eps_growth_6q(ticker):
         }
     """
     try:
-        data = fetch_financials(ticker)
+        if data is None:
+            data = fetch_financials(ticker)
         
         if 'error' in data:
             return {'success': False, 'error': data['error']}
@@ -1031,6 +1091,18 @@ def run_analysis(ticker):
         }
     """
     try:
+        # Pre-fetch data once for all analysis functions
+        data = fetch_financials(ticker)
+        
+        # Check for error in data fetching
+        if 'error' in data:
+            return {
+                'success': False,
+                'ticker': ticker,
+                'error': data['error'],
+                'analysis_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+
         results = {
             'success': True,
             'ticker': ticker,
@@ -1039,18 +1111,18 @@ def run_analysis(ticker):
             'analysis_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
         
-        # Long-term analysis (4Y)
-        results['long_term']['revenue_4y'] = analyze_revenue_growth_4y(ticker)
-        results['long_term']['profit_4y'] = analyze_profit_growth_4y(ticker)
-        results['long_term']['roe_4y'] = analyze_roe_growth_4y(ticker)
-        results['long_term']['eps_4y'] = analyze_eps_growth_4y(ticker)
-        results['long_term']['pe_ratio'] = analyze_pe_vs_industry(ticker)
+        # Long-term analysis (4Y) - Pass data
+        results['long_term']['revenue_4y'] = analyze_revenue_growth_4y(ticker, data=data)
+        results['long_term']['profit_4y'] = analyze_profit_growth_4y(ticker, data=data)
+        results['long_term']['roe_4y'] = analyze_roe_growth_4y(ticker, data=data)
+        results['long_term']['eps_4y'] = analyze_eps_growth_4y(ticker, data=data)
+        results['long_term']['pe_ratio'] = analyze_pe_vs_industry(ticker, data=data)
         
-        # Short-term analysis (6Q)
-        results['short_term']['revenue_6q'] = analyze_revenue_growth_6q(ticker)
-        results['short_term']['profit_6q'] = analyze_profit_growth_6q(ticker)
-        results['short_term']['roe_6q'] = analyze_roe_growth_6q(ticker)
-        results['short_term']['eps_6q'] = analyze_eps_growth_6q(ticker)
+        # Short-term analysis (6Q) - Pass data
+        results['short_term']['revenue_6q'] = analyze_revenue_growth_6q(ticker, data=data)
+        results['short_term']['profit_6q'] = analyze_profit_growth_6q(ticker, data=data)
+        results['short_term']['roe_6q'] = analyze_roe_growth_6q(ticker, data=data)
+        results['short_term']['eps_6q'] = analyze_eps_growth_6q(ticker, data=data)
         
         return results
         
@@ -1065,7 +1137,7 @@ def run_analysis(ticker):
 
 def analyze_multiple_tickers(tickers_list):
     """
-    Run fundamental analysis on multiple tickers.
+    Run fundamental analysis on multiple tickers in parallel.
     
     Parameters:
     -----------
@@ -1086,22 +1158,58 @@ def analyze_multiple_tickers(tickers_list):
     results = []
     failed_tickers = []
     
-    for ticker in tickers_list:
-        print(f"Analyzing {ticker}...")
-        result = run_analysis(ticker)
-        
-        if result['success']:
-            results.append(result)
-        else:
-            failed_tickers.append(ticker)
-            print(f"  Failed: {result.get('error', 'Unknown error')}")
+    print(f"Starting parallel analysis for {len(tickers_list)} tickers using ThreadPoolExecutor (max_workers=3)...")
     
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        future_to_ticker = {executor.submit(run_analysis, ticker): ticker for ticker in tickers_list}
+        
+        if tqdm:
+            iterator = tqdm(as_completed(future_to_ticker), total=len(tickers_list), desc="Analyzing", unit="ticker")
+        else:
+            iterator = as_completed(future_to_ticker)
+            
+        for future in iterator:
+            ticker = future_to_ticker[future]
+            try:
+                result = future.result()
+                if result['success']:
+                    results.append(result)
+                    if not tqdm:
+                        print(f"  [SUCCESS] {ticker}")
+                else:
+                    failed_tickers.append(ticker)
+                    if not tqdm:
+                        print(f"  [FAILED] {ticker}: {result.get('error', 'Unknown error')}")
+                    # Capture failures in results too for logging
+                    results.append(result) 
+            except Exception as e:
+                failed_tickers.append(ticker)
+                # create a dummy failure result
+                results.append({'success': False, 'ticker': ticker, 'error': str(e)})
+                if not tqdm:
+                    print(f"  [ERROR] {ticker}: {str(e)}")
+    
+    # Save error log to file
+    if failed_tickers:
+        error_details = {}
+        for res in results:
+            if not res['success']:
+                error_details[res['ticker']] = res.get('error', 'Unknown')
+        
+        try:
+            with open('analysis_errors.json', 'w') as f:
+                json.dump(error_details, f, indent=4)
+            print(f"Error details saved to {os.path.abspath('analysis_errors.json')}")
+        except Exception as e:
+            print(f"Failed to save error log: {e}")
+
     return {
         'success': True,
         'analyzed_count': len(results),
         'failed_count': len(failed_tickers),
         'results': results,
-        'failed_tickers': failed_tickers
+        'failed_tickers': failed_tickers,
+        'errors': failed_tickers # This is just a list of strings currently
     }
 
 
@@ -1405,8 +1513,7 @@ def render_batch_summary_page(pdf, batch_results):
 # ============================================================================
 
 def analyze_batch(json_file):
-    import os
-    import json
+    # import json # Already imported globally
     
     if not os.path.exists(json_file):
         print(f"Error: {json_file} not found.")
@@ -1433,6 +1540,10 @@ def analyze_batch(json_file):
     # Use the existing function to process the list
     batch_results = analyze_multiple_tickers(tickers)
     
+    # Save errors to a file for debugging (Redundant if analyze_multiple_tickers does it, 
+    # but good to be sure or move it here if we want absolute control)
+    # The analyze_multiple_tickers function handles it now.
+        
     # Generate PDF Report
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     pdf_filename = f"fundamental_batch_report_{timestamp}.pdf"
@@ -1478,6 +1589,9 @@ def analyze_batch(json_file):
         print("-" * 110)
         
         for res in batch_results['results']:
+            if not res.get('success', False):
+                continue
+                
             ticker = res['ticker']
             lt = res['long_term']
             

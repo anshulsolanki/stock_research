@@ -35,6 +35,7 @@ This is the **modern dashboard interface** for the Stock Technical Analysis plat
 
 ### Batch Analysis
 ![Batch Analysis](docs/images/batch_analysis.png)
+> 🚀 **Powered by optimized fundamental analysis engine**: Faster batch processing with minimized redundant API calls.
 
 ## 🏗️ System Architecture
 
@@ -424,7 +425,7 @@ This tool is for educational and research purposes only. Technical analysis does
 
 ---
 
-**Last Updated**: January 2026
-**Version**: 1.1
+**Last Updated**: February 2026
+**Version**: 1.2
 
 **Made with ❤️ for modern stock market analysis**
