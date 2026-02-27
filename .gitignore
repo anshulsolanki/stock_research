@@ -85,3 +85,7 @@ llm/experiment_garage/
 #files
 experiments_space/upload_to_drive.py
 fundamental_analysis/analysis_errors.json
+
+# Breakout Screeners
+breakout_screeners/data_cache/
+breakout_screeners/screener_results/
