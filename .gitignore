@@ -58,6 +58,7 @@ env/
 *.jpg
 *.jpeg
 *.pdf
+!batch_reports/reports/**/*.pdf
 # Exception: Keep example images if needed
 # !examples/*.png
 
