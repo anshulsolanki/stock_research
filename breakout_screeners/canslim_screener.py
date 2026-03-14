@@ -1,3 +1,45 @@
+"""
+CANSLIM Stock Screener
+
+This script implements William O'Neil's CANSLIM methodology to identify high-growth stocks 
+with strong technical and fundamental characteristics.
+
+CANSLIM Criteria Implemented:
+-----------------------------
+C - Current Quarterly Earnings: EPS and Sales growth >= 20%.
+A - Annual Earnings Increases: Annual EPS growth >= 25% and ROE >= 17%.
+N - New Products, Management, or Highs: Price within 20% of its 52-week high.
+S - Supply and Demand: Trading volume must be above its 50-day average (Accumulation).
+L - Leader or Laggard: Relative Strength (RS) Rating >= 80 (top 20% of the market).
+I - Institutional Sponsorship: Institutional ownership >= 10%.
+M - Market Direction: Checks if NIFTY 50 is above its 50-day moving average.
+
+Technical Filters & Trade Setup:
+--------------------------------
+- Price >= 50-day and 200-day Simple Moving Averages (SMA).
+- 50-day SMA > 200-day SMA (Upward Trend).
+- Pivot Point: 20-day high (excluding today).
+- Buy Zone: Price must be within 5% of the pivot level (avoiding extended stocks).
+- Risk Management: 7.5% Stop Loss and 25% Profit Target.
+
+Calculation Logic:
+------------------
+- RS Rating: Percentile rank (0-99) of 1-year returns across the screened universe.
+- Market Status: 'Bullish' if NIFTY 50 > 50-day SMA, else 'Bearish'.
+- Volume Ratio: Today's Volume / 50-day Average Volume.
+
+Risk Management (Execution Rules):
+---------------------
+The strategy relies heavily on cutting losses quickly to maintain positive expectancy.
+- Technical Stop Loss: You must exit immediately if the stock severely undercuts the 50-day or 10-week moving average.
+- Hard Stop Limit: Never tolerate a pullback greater than a rigid 7% to 8% drop from your initial entry point.
+- Risk/Reward Goal: Position sizing and profit-taking should be engineered so that your average winning trade is at least 2.5 times larger than your average losing trade.
+
+Usage:
+------
+python canslim_screener.py [--limit N] [--sample N] [--refresh]
+"""
+
 # Imports
 import yfinance as yf
 import pandas as pd
@@ -7,6 +49,7 @@ import os
 import argparse
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.patches as patches
 # Initialize Console (Dummy wrapper for now, similar to fw_breakout_screener)
 class Console:
@@ -41,6 +84,7 @@ OUTPUT_DIR = os.path.join(BASE_DIR, 'screener_results', 'CAMSLIM_breakouts', TIM
 CHARTS_DIR = os.path.join(OUTPUT_DIR, 'charts')
 CACHE_DIR = os.path.join(BASE_DIR, 'data_cache')
 JSON_PATH = os.path.join(DATA_DIR, 'nifty_500.json')
+PDF_PATH = os.path.join(OUTPUT_DIR, f"CANSLIM_Screener_Results_{TIMESTAMP}.pdf")
 
 # CANSLIM Parameters
 MIN_EPS_GROWTH = 0.20  # Current Qtr EPS >= 20%
@@ -134,7 +178,7 @@ def fetch_data(ticker, refresh=False):
         # console.print(f"[yellow]Error fetching {ticker}: {e}[/yellow]")
         return None
 
-def check_criteria(data, ticker, rs_rating):
+def check_criteria(data, ticker, rs_rating, market_status="Unknown"):
     info = data.get('info', {})
     df = data.get('history', None)
     
@@ -242,7 +286,7 @@ def check_criteria(data, ticker, rs_rating):
     return {
         'Ticker': ticker,
         'Date': df.index[-1].strftime('%Y-%m-%d'),
-        'Close': current_close,
+        'Close': round(current_close, 1),
         'Breakout': round(breakout_level, 2),
         'Target': round(target_price, 2),
         'Stop_Loss': round(stop_loss, 2),
@@ -256,10 +300,150 @@ def check_criteria(data, ticker, rs_rating):
         'Vol_Ratio': round(current_vol / vol_sma_50, 2),
         'SMA50': sma_50,
         'SMA200': sma_200,
-        '52W_High': high_52w
+        '52W_High': high_52w,
+        'Market_Status': market_status
     }
 
-def generate_chart(df, ticker, result):
+def create_pdf_title_page(pdf, timestamp, market_status):
+    """Creates a professional title page for the PDF report."""
+    fig = plt.figure(figsize=(11, 8.5))
+    plt.axis('off')
+    
+    plt.text(0.5, 0.7, "CANSLIM Stock Screener Report", 
+             ha='center', va='center', fontsize=32, weight='bold', color='#1e293b')
+    
+    plt.text(0.5, 0.55, f"Analysis Date: {timestamp}", 
+             ha='center', va='center', fontsize=18, color='#475569')
+    
+    # Market Status highlighting
+    status_color = '#16a34a' if "Bullish" in market_status else '#dc2626'
+    plt.text(0.5, 0.45, f"Market Condition: {market_status}", 
+             ha='center', va='center', fontsize=20, weight='bold', color=status_color)
+    
+    # Strengths and Limitations
+    # Left Column: Strengths
+    plt.text(0.1, 0.35, "Strengths of CANSLIM", fontsize=14, weight='bold', color='#2563eb')
+    strengths = [
+        "✔ Works very well in bull markets",
+        "✔ Combines fundamentals + technicals",
+        "✔ Strong risk management focus"
+    ]
+    for i, s in enumerate(strengths):
+        plt.text(0.1, 0.31 - (i * 0.035), s, fontsize=11, color='#4b5563')
+        
+    # Right Column: Limitations
+    plt.text(0.55, 0.35, "Limitations", fontsize=14, weight='bold', color='#dc2626')
+    limitations = [
+        "⚠ Underperforms in sideways or bear markets",
+        "⚠ Requires discipline and fast decision-making",
+        "⚠ Frequent churn if market conditions are choppy"
+    ]
+    for i, l in enumerate(limitations):
+        plt.text(0.55, 0.31 - (i * 0.035), l, fontsize=11, color='#4b5563')
+    pdf.savefig(fig)
+    plt.close(fig)
+
+def render_pdf_documentation_page(pdf):
+    """Adds a documentation page explaining the methodology and rules."""
+    fig = plt.figure(figsize=(11, 8.5))
+    plt.axis('off')
+    
+    # Title
+    plt.text(0.5, 0.97, "CANSLIM Methodology & Execution Rules", 
+             ha='center', va='top', fontsize=20, weight='bold', color='#1e293b')
+    
+    sections = [
+        ("CANSLIM Criteria", [
+            "C - Current Quarterly Earnings: EPS and Sales growth >= 20%.",
+            "A - Annual Earnings Increases: Annual EPS growth >= 25% and ROE >= 17%.",
+            "N - New Products, Management, or Highs: Price within 20% of 52-week high.",
+            "S - Supply and Demand: Trading volume above 50-day average (Accumulation).",
+            "L - Leader or Laggard: RS Rating >= 80 (top 20% of the market).",
+            "I - Institutional Sponsorship: Institutional ownership >= 10%.",
+            "M - Market Direction: NIFTY 50 above 50-day SMA."
+        ]),
+        ("Technical Filters & Trade Setup", [
+            "Price >= 50-day and 200-day Simple Moving Averages (SMA).",
+            "50-day SMA > 200-day SMA (Upward Trend).",
+            "Pivot Point: 20-day high (excluding today).",
+            "Buy Zone: Price must be within 5% of the pivot level.",
+            "Trade Objective: 7.5% Stop Loss and 25% Profit Target."
+        ]),
+        ("Calculation Logic", [
+            "RS Rating: Percentile rank (0-99) of 1-year returns in the universe.",
+            "Market Status: Bullish if Nifty > 50SMA, else Bearish.",
+            "Volume Ratio: Today's Volume / 50-day average volume."
+        ]),
+        ("Risk Management (Execution Rules)", [
+            "The strategy relies heavily on cutting losses quickly to maintain positive expectancy.",
+            "Technical SL: Exit immediately if stock undercuts 50-day or 10-week SMA.",
+            "Hard Stop: Never tolerate a pullback greater than a rigid 7% to 8% drop from your initial entry point.",
+            "Risk/Reward Goal: Position sizing and profit-taking should be engineered so that your average winning", 
+            "trade is at least 2.5 times larger than your average losing trade."
+        ])
+    ]
+    
+    y = 0.88 # Moved down from 0.92 to avoid overlap with header
+    for title, points in sections:
+        # Heading
+        plt.text(0.05, y, title, fontsize=14, weight='bold', color='#1e293b') # Margin 0.1 -> 0.05
+        y -= 0.03
+        
+        # Bullet points
+        for point in points:
+            plt.text(0.07, y, f"• {point}", fontsize=11, color='#475569') # Margin 0.12 -> 0.07
+            y -= 0.035
+        
+        y -= 0.02 # Space between sections
+        
+    pdf.savefig(fig)
+    plt.close(fig)
+
+def render_pdf_styled_table(pdf, df, title):
+    """Renders a dataframe as a styled table in the PDF."""
+    if df.empty:
+        return
+
+    rows_per_page = 20
+    num_pages = (len(df) // rows_per_page) + 1
+    
+    for i in range(num_pages):
+        start_idx = i * rows_per_page
+        end_idx = min((i + 1) * rows_per_page, len(df))
+        chunk = df.iloc[start_idx:end_idx]
+        
+        fig, ax = plt.subplots(figsize=(11, 8.5))
+        ax.axis('tight')
+        ax.axis('off')
+        
+        ax.set_title(f"{title} (Page {i+1}/{num_pages})", 
+                     fontsize=16, weight='bold', pad=20, color='#1e293b')
+        
+        # Increase Ticker column width (0) and distribute others to fill the page
+        col_widths = [0.14] + [0.065] * (len(chunk.columns) - 1) # Sum = 0.985
+        
+        table = ax.table(cellText=chunk.values, colLabels=chunk.columns, 
+                        loc='center', cellLoc='center', colWidths=col_widths)
+        
+        table.auto_set_font_size(False)
+        table.set_fontsize(6) 
+        table.scale(1.0, 1.2) # Minimal row height
+        
+        # Style header and rows
+        for (row, col), cell in table.get_celld().items():
+            if row == 0:
+                cell.set_text_props(weight='bold', color='white')
+                cell.set_facecolor('#1e293b')
+            else:
+                cell.set_facecolor('#f8fafc' if row % 2 == 0 else 'white')
+                # Color code Ticker
+                if col == 0: 
+                     cell.set_text_props(weight='bold', color='#2563eb')
+        
+        pdf.savefig(fig)
+        plt.close(fig)
+
+def generate_chart(df, ticker, result, pdf=None):
     # Plot last 1 year or 6 months
     plot_df = df.tail(150)
     
@@ -289,7 +473,7 @@ def generate_chart(df, ticker, result):
     ax1.axhline(result['Stop_Loss'], color='red', linestyle=':', linewidth=1.5, alpha=0.8, label=f"Stop 7.5% ({result['Stop_Loss']})")
     
     # Title
-    title = (f"{ticker} - CANSLIM Breakout Setup\n"
+    title = (f"{ticker} - CANSLIM Breakout Setup | Market: {result.get('Market_Status', 'Unknown')}\n"
              f"Qtr EPS: {result['Qtr_EPS%']}%, Ann EPS: {result['Ann_EPS%']}%, ROE: {result['ROE%']}%\n"
              f"RS Rating: {result['RS_Rating']}, Inst Own: {result['Inst_Own%']}% | R:R: {result['Risk_Reward']}")
     ax1.set_title(title, fontsize=12)
@@ -304,6 +488,9 @@ def generate_chart(df, ticker, result):
     
     plt.xticks(rotation=45)
     plt.tight_layout()
+    
+    if pdf:
+        pdf.savefig(fig)
     
     filename = f"{ticker.replace('.NS', '')}_canslim.png"
     save_path = os.path.join(CHARTS_DIR, filename)
@@ -330,6 +517,23 @@ def main():
     # Calculate True RS Ratings prior to scanning
     rs_ratings = calculate_rs_ratings(tickers)
     
+    # Get Market Condition
+    market_status = "Unknown"
+    try:
+        with console.status("[blue]Fetching NIFTY 50 Market Condition...[/blue]"):
+            nifty = yf.Ticker('^NSEI')
+            nifty_df = nifty.history(period="6mo")
+            if len(nifty_df) >= 50:
+                nifty_df['SMA50'] = nifty_df['Close'].rolling(window=50).mean()
+                current_nifty = nifty_df['Close'].iloc[-1]
+                sma50_nifty = nifty_df['SMA50'].iloc[-1]
+                if current_nifty > sma50_nifty:
+                    market_status = f"Bullish (Nifty: {current_nifty:.2f} > 50SMA: {sma50_nifty:.2f})"
+                else:
+                    market_status = f"Bearish (Nifty: {current_nifty:.2f} < 50SMA: {sma50_nifty:.2f})"
+    except Exception as e:
+        console.print(f"[yellow]Error fetching market condition: {e}[/yellow]")
+        
     results = []
     
     with console.status(f"[bold green]Scanning {len(tickers)} stocks against CANSLIM...[/bold green]") as status:
@@ -337,25 +541,47 @@ def main():
             data = fetch_data(ticker, refresh=args.refresh)
             if data:
                 rs = rs_ratings.get(ticker, 0) # default to 0 if not calculated
-                match = check_criteria(data, ticker, rs)
+                match = check_criteria(data, ticker, rs, market_status)
                 if match:
                     console.print(f"[green]FOUND: {ticker} (Qtr EPS: {match['Qtr_EPS%']}%, Ann EPS: {match['Ann_EPS%']}%, ROE: {match['ROE%']}%, RS: {match['RS_Rating']}) [/green]")
-                    generate_chart(data['history'], ticker, match)
-                    results.append(match)
+                    # Store data to regenerate chart in PDF later
+                    results.append((match, data))
     
-    if results:
-        df_results = pd.DataFrame(results)
-        cols = ['Ticker', 'Date', 'Close', 'Breakout', 'Target', 'Stop_Loss', 'Risk_Reward', 'Qtr_EPS%', 'Qtr_Sales%', 'Ann_EPS%', 'ROE%', 'Inst_Own%', 'RS_Rating', 'Vol_Ratio']
-        if all(c in df_results.columns for c in cols):
-            df_results = df_results[cols]
-            
-        print("\nCANSLIM Screener Results:")
-        print(df_results.to_string(index=False))
+    with PdfPages(PDF_PATH) as pdf:
+        # 1. Title Page
+        create_pdf_title_page(pdf, TIMESTAMP, market_status)
         
-        df_results.to_csv(os.path.join(OUTPUT_DIR, 'results.csv'), index=False)
-        console.print(f"\n[bold]Results saved to {OUTPUT_DIR}/results.csv[/bold]")
-    else:
-        console.print("[yellow]No stocks found matching CANSLIM criteria.[/yellow]")
+        # 2. Documentation Page (New)
+        render_pdf_documentation_page(pdf)
+        
+        if results:
+            # 2. Add Summary Table to PDF (Moved to top)
+            df_results = pd.DataFrame([r[0] for r in results])
+            cols = ['Ticker', 'Date', 'Close', 'Breakout', 'Target', 'Stop_Loss', 'Risk_Reward', 'Qtr_EPS%', 'Qtr_Sales%', 'Ann_EPS%', 'ROE%', 'Inst_Own%', 'RS_Rating', 'Vol_Ratio']
+            if all(c in df_results.columns for c in cols):
+                df_results = df_results[cols]
+                
+            print("\nCANSLIM Screener Results:")
+            print(df_results.to_string(index=False))
+            
+            render_pdf_styled_table(pdf, df_results, "CANSLIM Screener Summary Results")
+            
+            # 3. Add individual Stock Pages
+            for match, data in results:
+                generate_chart(data['history'], match['Ticker'], match, pdf=pdf)
+            
+            df_results.to_csv(os.path.join(OUTPUT_DIR, 'results.csv'), index=False)
+            console.print(f"\n[bold]Results saved to {OUTPUT_DIR}/results.csv[/bold]")
+            console.print(f"[bold green]PDF Report saved to {PDF_PATH}[/bold green]")
+        else:
+            console.print("[yellow]No stocks found matching CANSLIM criteria.[/yellow]")
+            # Add "No Results" page to PDF
+            fig = plt.figure(figsize=(11, 8.5))
+            plt.axis('off')
+            plt.text(0.5, 0.5, "No stocks found matching CANSLIM criteria.", 
+                     ha='center', va='center', fontsize=20, color='#64748b')
+            pdf.savefig(fig)
+            plt.close(fig)
 
 if __name__ == "__main__":
     main()

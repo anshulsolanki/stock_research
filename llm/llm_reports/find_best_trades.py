@@ -469,9 +469,9 @@ def main():
         print(f"Error: Target directory not found: {target_dir}")
         return
 
-    files = [f for f in os.listdir(target_dir) if f.lower().endswith('.pdf')]
+    files = [f for f in os.listdir(target_dir) if f.lower().endswith('.pdf') and f.startswith("Detailed_Analysis_Stock_Report")]
     if not files:
-        print(f"No PDF files found in {target_dir}")
+        print(f"No matching PDF files found in {target_dir}")
         return
 
     results_file = os.path.join(target_dir, "trade_analysis_results.jsonl")

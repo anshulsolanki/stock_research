@@ -66,10 +66,26 @@ from prompts import STRATEGIC_ANALYSIS_PROMPT, CANDLESTICK_ANALYSIS_PROMPT, NEWS
 # Load environment variables
 load_dotenv()
 
+# ##
+# List of Model Names:
+
+# Gemini 3.x:
+# gemini-3.1-pro-preview
+# gemini-3-flash-preview
+# gemini-3-pro-preview (Note: This is deprecated, users should move to gemini-3.1-pro-preview)
+
+# Gemini 2.5:
+# gemini-2.5-pro (Represents the latest stable version)
+# gemini-2.5-flash (Represents the latest stable version)
+# gemini-2.5-flash-lite
+# gemini-2.5-flash-image (Primarily for image generation)
+# gemini-2.5-flash-live (Preview, for real-time conversational agents)
+# gemini-2.5-flash-tts (Preview, for Text-to-Speech)
+# gemini-2.5-pro-tts (Preview, for Text-to-Speech)
+# ##
+
 # Configuration
-#gemini-2.5-flash
-#DEFAULT_MODEL_NAME = "gemini-2.5-flash"
-DEFAULT_MODEL_NAME = "gemini-3-pro-preview" 
+DEFAULT_MODEL_NAME = "gemini-3.1-pro-preview" 
 
 def setup_gemini_client():
     """
@@ -380,7 +396,10 @@ def analyze_stock_report(pdf_path, model_name=DEFAULT_MODEL_NAME):
         print(strategic_text)
         print("\n" + "="*80)
     except Exception as e:
-        print(f"\nError generating strategic analysis: {e}")
+        print(f"\n[ERROR] Failed to generate strategic analysis!")
+        print(f"Details: {e}")
+        print("Aborting analysis for this report.")
+        return
 
     # 4. Generate Candlestick Analysis
     print("\nSending Candlestick Classification request to Gemini (this may take a moment)...")
@@ -402,7 +421,10 @@ def analyze_stock_report(pdf_path, model_name=DEFAULT_MODEL_NAME):
         print(candlestick_text)
         print("\n" + "="*80)
     except Exception as e:
-        print(f"\nError analyzing candlestick chart: {e}")
+        print(f"\n[ERROR] Failed to analyze candlestick chart!")
+        print(f"Details: {e}")
+        print("Aborting analysis for this report.")
+        return
 
     # 5. Extract Stock Name & Fetch News/Analyst Targets
     base_name = os.path.splitext(os.path.basename(pdf_path))[0]
@@ -443,7 +465,10 @@ def analyze_stock_report(pdf_path, model_name=DEFAULT_MODEL_NAME):
             )
             news_text = news_response.text
         except Exception as standard_gen_error:
-            print(f"\nError generating fallback news analysis: {standard_gen_error}")
+            print(f"\n[ERROR] Failed to generate fallback news analysis!")
+            print(f"Details: {standard_gen_error}")
+            print("Aborting analysis for this report.")
+            return
 
     print("\n" + "="*80)
     print("NEWS & ANALYST TARGETS")
@@ -530,7 +555,9 @@ if __name__ == "__main__":
     parser.add_argument("--model", default=DEFAULT_MODEL_NAME, help=f"Gemini model to use (default: {DEFAULT_MODEL_NAME})")
     
     args = parser.parse_args()
-    print("\n using model: ", args.model)
+    print("\n" + "="*50)
+    print("Using model: ", args.model)
+    print("="*50 + "\n")
     
     if os.path.isdir(args.path):
         analyze_folder(args.path, args.model)
