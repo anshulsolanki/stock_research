@@ -75,7 +75,7 @@ batch_reports/scripts/website_screen_shot_automation/trendlyne_user_data/
 .playwright/
 
 # Generated Reports
-batch_reports/reports/
+#batch_reports/reports/
 
 # LLM Project Data
 llm/et_user_data/
