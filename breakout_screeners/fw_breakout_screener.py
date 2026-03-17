@@ -508,47 +508,91 @@ def generate_chart(df, ticker, result, pdf=None):
     plt.close(fig)
     return save_path
 
+def render_pdf_standard_header(fig, title_text="Stock Analysis Report"):
+    """Adds the professional header and separator line to a page."""
+    # Colors
+    PRIMARY_COLOR = '#1e293b'  # Slate 800
+    ACCENT_COLOR = '#2563eb'   # Blue 600
+    BORDER_COLOR = '#94a3b8'   # Slate 400
+    
+    # Header Title
+    fig.text(0.5, 0.96, title_text, ha='center', va='center', 
+             fontsize=16, weight='bold', color=PRIMARY_COLOR)
+    
+    # Copyright Subtitle
+    copyright_text = f"© {datetime.now().year} Stock Research. All Rights Reserved."
+    fig.text(0.5, 0.935, copyright_text, ha='center', va='center', 
+             fontsize=9, style='italic', color=BORDER_COLOR)
+    
+    # Separator Line
+    from matplotlib.lines import Line2D
+    line = Line2D([0.08, 0.92], [0.91, 0.91], transform=fig.transFigure, 
+                  color=BORDER_COLOR, linewidth=1.0, alpha=0.5)
+    fig.add_artist(line)
+
 def create_pdf_title_page(pdf, timestamp):
     """Creates a professional title page for the PDF report."""
-    fig = plt.figure(figsize=(11, 8.5))
+    # Use PORTRAIT for title page
+    fig = plt.figure(figsize=(8.5, 11))
     plt.axis('off')
     
-    plt.text(0.5, 0.7, "Financial-Wisdom Breakout Report", 
-             ha='center', va='center', fontsize=32, weight='bold', color='#1e293b')
+    render_pdf_standard_header(fig)
     
-    plt.text(0.5, 0.55, f"Analysis Date: {timestamp}", 
-             ha='center', va='center', fontsize=18, color='#475569')
+    # Professional Colors
+    PRIMARY_COLOR = '#1e293b'
+    ACCENT_COLOR = '#2563eb'
+    SECONDARY_COLOR = '#475569'
     
-    # Strategy Highlights
-    plt.text(0.1, 0.35, "Strategy Core", fontsize=14, weight='bold', color='#1e293b')
+    # Main Title
+    fig.text(0.5, 0.65, "Financial-Wisdom", 
+             ha='center', va='center', fontsize=42, weight='bold', color=ACCENT_COLOR)
+    fig.text(0.5, 0.58, "Breakout Screener Report", 
+             ha='center', va='center', fontsize=24, weight='bold', color=SECONDARY_COLOR)
+    
+    # Analysis Subtitle
+    fig.text(0.5, 0.50, f"Strategic Market Scan: {timestamp}", 
+             ha='center', va='center', fontsize=16, color=SECONDARY_COLOR)
+    
+    # Strategy Highlights Box
+    fig.text(0.15, 0.35, "Strategy Framework", fontsize=16, weight='bold', color=PRIMARY_COLOR)
     highlights = [
-        "✔ Technical Breakout Precision",
-        "✔ CANSLIM Quality Overlays",
-        "✔ 3-Panel Momentum Confirmation",
-        "✔ Middle-Third Risk Management"
+        "● Technical Breakout Precision",
+        "● CANSLIM Quality Overlays",
+        "● 3-Panel Momentum Confirmation",
+        "● Middle-Third Risk Management"
     ]
     for i, s in enumerate(highlights):
-        plt.text(0.1, 0.31 - (i * 0.035), s, fontsize=11, color='#4b5563')
+        fig.text(0.15, 0.31 - (i * 0.04), s, fontsize=12, color=SECONDARY_COLOR)
         
     pdf.savefig(fig)
     plt.close(fig)
 
 def render_pdf_documentation_page(pdf):
     """Adds a documentation page explaining the methodology and rules."""
-    fig = plt.figure(figsize=(11, 8.5))
+    # Use PORTRAIT for text-heavy methodology
+    fig = plt.figure(figsize=(8.5, 11))
     plt.axis('off')
     
-    # Title
-    plt.text(0.5, 0.97, "Methodology & Execution Rules", 
-             ha='center', va='top', fontsize=20, weight='bold', color='#1e293b')
+    render_pdf_standard_header(fig)
+    
+    # Standard Professional Colors and Margins
+    PRIMARY_COLOR = '#1e293b'
+    SECONDARY_COLOR = '#475569'
+    ACCENT_COLOR = '#dc2626' # Red for bullets
+    LEFT_MARGIN = 0.08
+    
+    # Section Header
+    fig.text(LEFT_MARGIN, 0.86, "FW Breakout Screener Methodology", 
+             ha='left', va='top', fontsize=20, weight='bold', color=PRIMARY_COLOR)
     
     # Methodology Content
     methodology_text = """
 This script implements an advanced breakout strategy combining technical precision, 
-momentum signals, and fundamental 'Quality' overlays as defined in the Financial-Wisdom / Blueprint 2025 methodology.
+momentum signals, and fundamental 'Quality' overlays as defined in the 
+Financial-Wisdom / Blueprint 2025 methodology.
 
-Technical Criteria (The 'Setup'):
---------------------------------
+Step 1: Technical Setup (The Screening)
+----------------------------------------
 - Timeframe: Weekly charts for high-conviction trend analysis.
 - Trend: Price must be above the 20-week Simple Moving Average (SMA20).
 - Momentum: MACD Line must be above the Signal Line.
@@ -556,61 +600,67 @@ Technical Criteria (The 'Setup'):
 - Consolidation: Minimum 6 weeks of tight price action (NATR < 8.0).
 - Breakout: Price must break above the 10-week high (closing prices).
 - Conviction: > 30% volume increase compared to the previous week.
-- Candle Structure: Upper wick must be < 50% of the total candle range (Low Selling Pressure).
+- Candle Structure: Upper wick < 50% of the total candle (Low Selling Pressure).
 - Breakout Size: 5% < Gain < 20% from previous week's close.
 
-Fundamental Overlays (The 'Quality' Filters):
--------------------------------------------
-The screener integrates CANSLIM fundamental rules to ensure high-quality vehicles:
-- Return on Equity (ROE): >= 17%
-- Return on Capital (ROC): >= 10%
-- Operating Margin: >= 10%
-- Current Qtr EPS Growth: >= 20%
-- Current Qtr Sales Growth: >= 20%
-- Annual EPS Growth: >= 25%
-- Institutional Sponsorship: >= 10%
+Step 2: Quality Overlays (The Filters)
+---------------------------------------
+The screener integrates CANSLIM fundamental rules to ensure high-quality:
+- Return on Equity (ROE) >= 17%
+- Return on Capital (ROC) >= 10%
+- Operating Margin >= 10%
+- Current Qtr EPS Growth >= 20%
+- Current Qtr Sales Growth >= 20%
+- Annual EPS Growth >= 25%
+- Institutional Sponsorship >= 10%
 
-Risk Management & Selling Strategy:
-----------------------------------
-- Initial Hard Stop (Risk Control): Placed at the lower boundary of the 'Middle 
-  Third' of the consolidation box. This ensures capital protection on breakout.
+Step 3: Risk & Selling Strategy
+---------------------------------
+- Initial Hard Stop: Placed at the lower boundary of the 'Middle Third' of the 
+  consolidation box. This ensures capital protection on breakout.
 - Safety Cap: Maximum allowed risk per trade is 20%.
-- Raised Stop (Profit Taking): The strategy uses Weekly MACD for trade management.
 - Exit Trigger: If MACD crosses below the Signal Line at the end of the week, the
   stop loss is raised to the LOW (wick) of that weekly candle.
-- Final Exit: The position is closed if the price breaches this raised stop in 
-  subsequent weeks, ensuring you stay with the momentum.
+- Final Exit: The position is closed if the price breaches this raised stop.
 """
     
     # Split into lines and render
     lines = methodology_text.strip().split('\n')
-    y = 0.88
+    y = 0.81
     for line in lines:
-        if y < 0.05: # Simple page break check
+        if y < 0.07: # Simple page break check
             pdf.savefig(fig)
             plt.clf()
             plt.axis('off')
-            y = 0.95
+            render_pdf_standard_header(fig)
+            y = 0.85
             
         stripped_line = line.strip()
         is_header = stripped_line.endswith(':') or stripped_line.startswith('---')
         
         # Also check if the line *above* dashed line is a header
-        if all(c == '-' for c in stripped_line) and len(stripped_line) > 5:
-            is_header = True
+        if str(stripped_line).startswith('Step'):
+             is_header = True
+             
+        if is_header:
+            if not str(stripped_line).startswith('-'):
+                 fig.text(LEFT_MARGIN, y, stripped_line, fontsize=13, weight='bold', color=PRIMARY_COLOR)
+                 y -= 0.035
+        elif stripped_line == "":
+            y -= 0.015
+        else:
+            # Bullet point handling
+            if stripped_line.startswith('-'):
+                fig.text(LEFT_MARGIN, y, "●", fontsize=10, color=ACCENT_COLOR)
+                fig.text(LEFT_MARGIN + 0.03, y, line[1:].strip(), fontsize=10.5, color=SECONDARY_COLOR)
+            else:
+                fig.text(LEFT_MARGIN, y, line, fontsize=10.5, color=SECONDARY_COLOR)
+            y -= 0.028
             
-        fontsize = 11 if not is_header else 14
-        weight = 'bold' if is_header else 'normal'
-        color = '#1e293b' if is_header else '#475569'
-        
-        # Match CANSLIM margins: 0.05 for headers, 0.07 for bullets (lines starting with -)
-        x_pos = 0.05
-        if stripped_line.startswith('-'):
-            x_pos = 0.07
+    # Add Page Info to Footer
+    fig.text(0.5, 0.03, f"Page 2/N", ha='center', fontsize=9, color='#94a3b8')
+    fig.text(0.92, 0.03, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), ha='right', fontsize=9, color='#94a3b8')
             
-        plt.text(x_pos, y, line, fontsize=fontsize, weight=weight, color=color)
-        y -= 0.03  # Match CANSLIM line spacing
-        
     pdf.savefig(fig)
     plt.close(fig)
 
@@ -632,29 +682,56 @@ def render_pdf_styled_table(pdf, df, title):
             if chunk[col].dtype == 'float64':
                 chunk[col] = chunk[col].map('{:.1f}'.format)
         
-        fig, ax = plt.subplots(figsize=(11, 8.5))
-        ax.axis('tight')
+        # Abbreviate long headers to prevent overlap
+        header_map = {
+            'Entry_Price': 'Entry', 
+            'Breakout_Level': 'Breakout', 
+            'Stop_Loss': 'Stop',
+            'Risk%': 'Risk%',
+            'Gain%': 'Gain%',
+            'Op_Margin%': 'Margin%',
+            'Qtr_EPS%': 'Q_EPS%',
+            'Ann_EPS%': 'A_EPS%',
+            'Inst_Own%': 'Inst%',
+            'Volume_Mult': 'Vol_Mult',
+            '52W_High': '52W_H'
+        }
+        chunk = chunk.rename(columns=header_map)
+        
+        # INCREASE WIDTH to 14 inches to prevent overlapping
+        fig = plt.figure(figsize=(14, 8.5)) 
+        ax = fig.add_axes([0, 0.05, 1, 0.85])
         ax.axis('off')
         
-        ax.set_title(f"{title} (Page {i+1}/{num_pages})", 
-                     fontsize=16, weight='bold', pad=20, color='#1e293b')
+        # Professional Table Header
+        render_pdf_standard_header(fig, title_text=f"{title} - Page {i+1}/{num_pages}")
         
-        col_widths = [0.12] + [0.065] * (len(chunk.columns) - 1)
+        # Recalculate column widths for 14-inch width
+        num_cols = len(chunk.columns)
+        ticker_width = 0.12 # Reduced from 0.15 since page is wider
+        other_width = (1.0 - ticker_width) / (num_cols - 1)
+        col_widths = [ticker_width] + [other_width] * (num_cols - 1)
         
         table = ax.table(cellText=chunk.values, colLabels=chunk.columns, 
                         loc='center', cellLoc='center', colWidths=col_widths)
         
         table.auto_set_font_size(False)
-        table.set_fontsize(7) 
-        table.scale(1.0, 1.5)
+        table.set_fontsize(8.5) # Can afford slightly larger font now
+        table.scale(1.0, 1.8) 
+        
+        # Colors (Slate 800)
+        PRIMARY_COLOR = '#1e293b'
         
         for (row, col), cell in table.get_celld().items():
             if row == 0:
-                cell.set_text_props(weight='bold', color='white')
-                cell.set_facecolor('#1e293b')
+                cell.set_text_props(weight='bold', color='white', fontsize=8.5)
+                cell.set_facecolor(PRIMARY_COLOR)
+                cell.set_linewidth(0.5)
             else:
-                cell.set_facecolor('#f8fafc' if row % 2 == 0 else 'white')
-                if col == 0: 
+                cell.set_text_props(color='#475569') # Secondary text color
+                cell.set_linewidth(0.3)
+                cell.set_facecolor('#f8fafc' if row % 2 == 0 else 'white') # Zebra striping
+                if col == 0: # Ticker column accent
                      cell.set_text_props(weight='bold', color='#2563eb')
         
         pdf.savefig(fig)

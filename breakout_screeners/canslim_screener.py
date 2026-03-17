@@ -336,98 +336,166 @@ def check_criteria(data, ticker, rs_rating, market_status="Unknown"):
         'Market_Status': market_status
     }
 
+def render_pdf_standard_header(fig, title_text="Stock Analysis Report"):
+    """Adds the professional header and separator line to a page."""
+    # Colors
+    PRIMARY_COLOR = '#1e293b'  # Slate 800
+    BORDER_COLOR = '#94a3b8'   # Slate 400
+    
+    # Header Title
+    fig.text(0.5, 0.96, title_text, ha='center', va='center', 
+             fontsize=16, weight='bold', color=PRIMARY_COLOR)
+    
+    # Copyright Subtitle
+    copyright_text = f"© {datetime.now().year} Stock Research. All Rights Reserved."
+    fig.text(0.5, 0.935, copyright_text, ha='center', va='center', 
+             fontsize=9, style='italic', color=BORDER_COLOR)
+    
+    # Separator Line
+    from matplotlib.lines import Line2D
+    line = Line2D([0.08, 0.92], [0.91, 0.91], transform=fig.transFigure, 
+                  color=BORDER_COLOR, linewidth=1.0, alpha=0.5)
+    fig.add_artist(line)
+
 def create_pdf_title_page(pdf, timestamp, market_status):
     """Creates a professional title page for the PDF report."""
-    fig = plt.figure(figsize=(11, 8.5))
+    # Use PORTRAIT for title page
+    fig = plt.figure(figsize=(8.5, 11))
     plt.axis('off')
     
-    plt.text(0.5, 0.7, "CANSLIM Stock Screener Report", 
-             ha='center', va='center', fontsize=32, weight='bold', color='#1e293b')
+    render_pdf_standard_header(fig)
     
-    plt.text(0.5, 0.55, f"Analysis Date: {timestamp}", 
-             ha='center', va='center', fontsize=18, color='#475569')
+    # Professional Colors
+    PRIMARY_COLOR = '#1e293b'
+    ACCENT_COLOR = '#2563eb'
+    SECONDARY_COLOR = '#475569'
+    
+    # Main Title
+    fig.text(0.5, 0.65, "CANSLIM Screener", 
+             ha='center', va='center', fontsize=36, weight='bold', color=ACCENT_COLOR)
+    fig.text(0.5, 0.58, "High-Growth Analysis Report", 
+             ha='center', va='center', fontsize=22, weight='bold', color=SECONDARY_COLOR)
+    
+    # Analysis Subtitle
+    fig.text(0.5, 0.52, f"Strategic Market Scan: {timestamp}", 
+             ha='center', va='center', fontsize=14, color=SECONDARY_COLOR)
     
     # Market Status highlighting
     status_color = '#16a34a' if "Bullish" in market_status else '#dc2626'
-    plt.text(0.5, 0.45, f"Market Condition: {market_status}", 
-             ha='center', va='center', fontsize=20, weight='bold', color=status_color)
+    fig.text(0.5, 0.46, f"Market Condition: {market_status}", 
+             ha='center', va='center', fontsize=16, weight='bold', color=status_color)
     
-    # Strengths and Limitations
-    # Left Column: Strengths
-    plt.text(0.1, 0.35, "Strengths of CANSLIM", fontsize=14, weight='bold', color='#2563eb')
+    # Strengths of CANSLIM
+    fig.text(0.15, 0.35, "Strengths of CANSLIM", fontsize=16, weight='bold', color=PRIMARY_COLOR)
     strengths = [
-        "✔ Works very well in bull markets",
-        "✔ Combines fundamentals + technicals",
-        "✔ Strong risk management focus"
+        "● Works very well in bull markets",
+        "● Combines fundamentals + technicals",
+        "● Strong risk management focus"
     ]
     for i, s in enumerate(strengths):
-        plt.text(0.1, 0.31 - (i * 0.035), s, fontsize=11, color='#4b5563')
+        fig.text(0.15, 0.31 - (i * 0.04), s, fontsize=12, color=SECONDARY_COLOR)
         
-    # Right Column: Limitations
-    plt.text(0.55, 0.35, "Limitations", fontsize=14, weight='bold', color='#dc2626')
+    # Limitations Box (Below strengths in portrait)
+    fig.text(0.55, 0.35, "Limitations", fontsize=16, weight='bold', color='#dc2626')
     limitations = [
-        "⚠ Underperforms in sideways or bear markets",
-        "⚠ Requires discipline and fast decision-making",
-        "⚠ Frequent churn if market conditions are choppy"
+        "● Underperforms in sideways markets",
+        "● Requires fast decision-making",
+        "● Selective in choppy conditions"
     ]
     for i, l in enumerate(limitations):
-        plt.text(0.55, 0.31 - (i * 0.035), l, fontsize=11, color='#4b5563')
+        fig.text(0.55, 0.31 - (i * 0.04), l, fontsize=12, color=SECONDARY_COLOR)
+
     pdf.savefig(fig)
     plt.close(fig)
 
 def render_pdf_documentation_page(pdf):
     """Adds a documentation page explaining the methodology and rules."""
-    fig = plt.figure(figsize=(11, 8.5))
+    # Use PORTRAIT for text-heavy methodology
+    fig = plt.figure(figsize=(8.5, 11))
     plt.axis('off')
     
-    # Title
-    plt.text(0.5, 0.97, "CANSLIM Methodology & Execution Rules", 
-             ha='center', va='top', fontsize=20, weight='bold', color='#1e293b')
+    render_pdf_standard_header(fig)
     
-    sections = [
-        ("CANSLIM Criteria", [
-            "C - Current Quarterly Earnings: EPS and Sales growth >= 20%.",
-            "A - Annual Earnings Increases: Annual EPS growth >= 25% and ROE >= 17%.",
-            "N - New Products, Management, or Highs: Price within 20% of 52-week high.",
-            "S - Supply and Demand: Trading volume above 50-day average (Accumulation).",
-            "L - Leader or Laggard: RS Rating >= 80 (top 20% of the market).",
-            "I - Institutional Sponsorship: Institutional ownership >= 10%.",
-            "M - Market Direction: NIFTY 50 above 50-day SMA."
-        ]),
-        ("Technical Filters & Trade Setup", [
-            "Price >= 50-day and 200-day Simple Moving Averages (SMA).",
-            "50-day SMA > 200-day SMA (Upward Trend).",
-            "Pivot Point: 20-day high (excluding today).",
-            "Buy Zone: Price must be within 5% of the pivot level.",
-            "Trade Objective: 7.5% Stop Loss and 25% Profit Target."
-        ]),
-        ("Calculation Logic", [
-            "RS Rating: Percentile rank (0-99) of 1-year returns in the universe.",
-            "Market Status: Bullish if Nifty > 50SMA, else Bearish.",
-            "Volume Ratio: Today's Volume / 50-day average volume."
-        ]),
-        ("Risk Management (Execution Rules)", [
-            "The strategy relies heavily on cutting losses quickly to maintain positive expectancy.",
-            "Technical SL: Exit immediately if stock undercuts 50-day or 10-week SMA.",
-            "Hard Stop: Never tolerate a pullback greater than a rigid 7% to 8% drop from your initial entry point.",
-            "Risk/Reward Goal: Position sizing and profit-taking should be engineered so that your average winning", 
-            "trade is at least 2.5 times larger than your average losing trade."
-        ])
-    ]
+    # Standard Professional Colors and Margins
+    PRIMARY_COLOR = '#1e293b'
+    SECONDARY_COLOR = '#475569'
+    ACCENT_COLOR = '#dc2626' # Red for bullets
+    LEFT_MARGIN = 0.08
     
-    y = 0.88 # Moved down from 0.92 to avoid overlap with header
-    for title, points in sections:
-        # Heading
-        plt.text(0.05, y, title, fontsize=14, weight='bold', color='#1e293b') # Margin 0.1 -> 0.05
-        y -= 0.03
+    # Section Header
+    fig.text(LEFT_MARGIN, 0.86, "CANSLIM Methodology & Execution Rules", 
+             ha='left', va='top', fontsize=20, weight='bold', color=PRIMARY_COLOR)
+    
+    # Methodology Content (Structured similarly to fw_breakout_screener)
+    methodology_text = """
+Step 1: CANSLIM Criteria (The Filters)
+--------------------------------------
+- C - Current Quarterly Earnings: EPS and Sales growth >= 20%.
+- A - Annual Earnings Increases: Annual EPS growth >= 25% and ROE >= 17%.
+- N - New Products, Management, or Highs: Price within 20% of 52-week high.
+- S - Supply and Demand: Trading volume above 50-day average (Accumulation).
+- L - Leader or Laggard: RS Rating >= 80 (top 20% of the market).
+- I - Institutional Sponsorship: Institutional ownership >= 10%.
+- M - Market Direction: NIFTY 50 above 50-day SMA.
+
+Step 2: Technical Filters & Trade Setup
+----------------------------------------
+- Price Status: Above both 50-day and 200-day Simple Moving Averages.
+- Trend Alignment: 50-day SMA > 200-day SMA (Upward momentum).
+- Base Identification: Pivot Point at 20-day high (excluding current bar).
+- Buy Zone: Entry only within 5% of the pivot level.
+- Risk/Reward Goal: 7.5% Hard Stop Loss vs 25% Profit Objective.
+
+Step 3: Calculation Logic
+--------------------------
+- RS Rating: Percentile rank (0-99) of 1-year returns across universe.
+- Market Status: 'Bullish' if NIFTY > 50-day SMA, else 'Bearish'.
+- Volume Ratio: Current Volume / 50-day Average Daily Volume.
+
+Step 4: Risk Management (Execution Rules)
+------------------------------------------
+- Speed of Execution: Cut losses quickly to maintain positive expectancy.
+- Technical Stop: Exit if stock undercuts 50-day or 10-week moving average.
+- Hard Stop Limit: Never tolerate a pullback > 7-8% from initial entry.
+- Profit Taking: Average win should be ~2.5x larger than average loss.
+"""
+    
+    # Split into lines and render using same logic as fw_breakout_screener
+    lines = methodology_text.strip().split('\n')
+    y = 0.81
+    for line in lines:
+        if y < 0.07: # Simple page break check
+            pdf.savefig(fig)
+            plt.clf()
+            plt.axis('off')
+            render_pdf_standard_header(fig)
+            y = 0.85
+            
+        stripped_line = line.strip()
+        is_header = stripped_line.endswith(':') or stripped_line.startswith('---')
         
-        # Bullet points
-        for point in points:
-            plt.text(0.07, y, f"• {point}", fontsize=11, color='#475569') # Margin 0.12 -> 0.07
-            y -= 0.035
-        
-        y -= 0.02 # Space between sections
-        
+        if str(stripped_line).startswith('Step'):
+             is_header = True
+             
+        if is_header:
+            if not str(stripped_line).startswith('-'):
+                 fig.text(LEFT_MARGIN, y, stripped_line, fontsize=13, weight='bold', color=PRIMARY_COLOR)
+                 y -= 0.035
+        elif stripped_line == "":
+            y -= 0.015
+        else:
+            # Bullet point handling
+            if stripped_line.startswith('-'):
+                fig.text(LEFT_MARGIN, y, "●", fontsize=10, color=ACCENT_COLOR)
+                fig.text(LEFT_MARGIN + 0.03, y, line[1:].strip(), fontsize=10.5, color=SECONDARY_COLOR)
+            else:
+                fig.text(LEFT_MARGIN, y, line, fontsize=10.5, color=SECONDARY_COLOR)
+            y -= 0.028
+            
+    # Add Page Info to Footer
+    fig.text(0.5, 0.03, f"Page 2/N", ha='center', fontsize=9, color='#94a3b8')
+    fig.text(0.92, 0.03, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), ha='right', fontsize=9, color='#94a3b8')
+            
     pdf.savefig(fig)
     plt.close(fig)
 
@@ -436,40 +504,66 @@ def render_pdf_styled_table(pdf, df, title):
     if df.empty:
         return
 
-    rows_per_page = 20
+    rows_per_page = 22
     num_pages = (len(df) // rows_per_page) + 1
     
     for i in range(num_pages):
         start_idx = i * rows_per_page
         end_idx = min((i + 1) * rows_per_page, len(df))
-        chunk = df.iloc[start_idx:end_idx]
+        chunk = df.iloc[start_idx:end_idx].copy()
         
-        fig, ax = plt.subplots(figsize=(11, 8.5))
-        ax.axis('tight')
+        # Format floats for table
+        for col in chunk.columns:
+            if chunk[col].dtype == 'float64':
+                chunk[col] = chunk[col].map('{:.1f}'.format)
+        
+        # Abbreviate long headers to prevent overlap
+        header_map = {
+            'Stop_Loss': 'Stop',
+            'Risk_Reward': 'R:R',
+            'Qtr_EPS%': 'Q_EPS%',
+            'Qtr_Sales%': 'Q_Sales%',
+            'Ann_EPS%': 'A_EPS%',
+            'Inst_Own%': 'Inst%',
+            'RS_Rating': 'RS',
+            'Vol_Ratio': 'Vol_R'
+        }
+        chunk = chunk.rename(columns=header_map)
+        
+        # INCREASE WIDTH to 14 inches to prevent overlapping
+        fig = plt.figure(figsize=(14, 8.5)) 
+        ax = fig.add_axes([0, 0.05, 1, 0.85])
         ax.axis('off')
         
-        ax.set_title(f"{title} (Page {i+1}/{num_pages})", 
-                     fontsize=16, weight='bold', pad=20, color='#1e293b')
+        # Professional Table Header
+        render_pdf_standard_header(fig, title_text=f"{title} - Page {i+1}/{num_pages}")
         
-        # Increase Ticker column width (0) and distribute others to fill the page
-        col_widths = [0.14] + [0.065] * (len(chunk.columns) - 1) # Sum = 0.985
+        # Recalculate column widths for 14-inch width
+        num_cols = len(chunk.columns)
+        ticker_width = 0.12
+        other_width = (1.0 - ticker_width) / (num_cols - 1)
+        col_widths = [ticker_width] + [other_width] * (num_cols - 1)
         
         table = ax.table(cellText=chunk.values, colLabels=chunk.columns, 
                         loc='center', cellLoc='center', colWidths=col_widths)
         
         table.auto_set_font_size(False)
-        table.set_fontsize(6) 
-        table.scale(1.0, 1.2) # Minimal row height
+        table.set_fontsize(8.5) 
+        table.scale(1.0, 1.8) 
         
-        # Style header and rows
+        # Colors (Slate 800)
+        PRIMARY_COLOR = '#1e293b'
+        
         for (row, col), cell in table.get_celld().items():
             if row == 0:
-                cell.set_text_props(weight='bold', color='white')
-                cell.set_facecolor('#1e293b')
+                cell.set_text_props(weight='bold', color='white', fontsize=8.5)
+                cell.set_facecolor(PRIMARY_COLOR)
+                cell.set_linewidth(0.5)
             else:
-                cell.set_facecolor('#f8fafc' if row % 2 == 0 else 'white')
-                # Color code Ticker
-                if col == 0: 
+                cell.set_text_props(color='#475569') # Secondary text color
+                cell.set_linewidth(0.3)
+                cell.set_facecolor('#f8fafc' if row % 2 == 0 else 'white') # Zebra striping
+                if col == 0: # Ticker column accent
                      cell.set_text_props(weight='bold', color='#2563eb')
         
         pdf.savefig(fig)
