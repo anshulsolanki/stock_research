@@ -50,39 +50,63 @@ def load_tickers(limit=None):
 
 def process_ticker(ticker):
     """
-    Downloads:
-    1. Info (metadata) -> {ticker}_info.json
-    2. Daily Data (2y) -> {ticker}_1d.csv (For VCP & CANSLIM)
-    3. Weekly Data (3y) -> {ticker}_1wk.csv (For Breakout Screener)
+    Downloads: Info, Daily, Weekly, and Financial statments.
+    Includes retry loops and stagger delays to mitigate Rate Limiting.
     """
-    try:
-        daily_path = os.path.join(CACHE_DIR, f"{ticker}_1d.csv")
-        weekly_path = os.path.join(CACHE_DIR, f"{ticker}_1wk.csv")
-        info_path = os.path.join(CACHE_DIR, f"{ticker}_info.json")
-        
-        stock = yf.Ticker(ticker)
-        
-        # 1. Info
-        try:
-            info = stock.info
-            with open(info_path, 'w') as f:
-                json.dump(info, f)
-        except Exception:
-            pass
+    import random
+    daily_path = os.path.join(CACHE_DIR, f"{ticker}_1d.csv")
+    weekly_path = os.path.join(CACHE_DIR, f"{ticker}_1wk.csv")
+    info_path = os.path.join(CACHE_DIR, f"{ticker}_info.json")
 
-        # 2. Daily Data (2y)
-        df_daily = stock.history(period="2y")
-        if not df_daily.empty:
-            df_daily.to_csv(daily_path)
-        
-        # 3. Weekly Data (3y)
-        df_weekly = stock.history(period="3y", interval="1wk")
-        if not df_weekly.empty:
-            df_weekly.to_csv(weekly_path)
+    max_retries = 3
+    # Initial stagger for concurrent thread launches
+    time.sleep(random.uniform(0.5, 2.0))
+
+    for attempt in range(max_retries):
+        try:
+            stock = yf.Ticker(ticker)
             
-        return True, ticker
-    except Exception as e:
-        return False, f"{ticker}: {str(e)}"
+            # 1. Info
+            try:
+                info = stock.info
+                if info:
+                    with open(info_path, 'w') as f:
+                        json.dump(info, f)
+            except Exception:
+                pass
+
+            # 2. Daily Data (5y for Dividend Fortress)
+            df_daily = stock.history(period="5y")
+            if not df_daily.empty:
+                df_daily.to_csv(daily_path)
+            
+            # 3. Weekly Data (3y)
+            df_weekly = stock.history(period="3y", interval="1wk")
+            if not df_weekly.empty:
+                df_weekly.to_csv(weekly_path)
+                
+            # 4. Financials (Additive for Bear Market Screener)
+            try:
+                if hasattr(stock, 'financials') and not stock.financials.empty:
+                    stock.financials.to_csv(os.path.join(CACHE_DIR, f"{ticker}_financials.csv"))
+                if hasattr(stock, 'quarterly_financials') and not stock.quarterly_financials.empty:
+                    stock.quarterly_financials.to_csv(os.path.join(CACHE_DIR, f"{ticker}_quarterly_financials.csv"))
+                if hasattr(stock, 'balance_sheet') and not stock.balance_sheet.empty:
+                    stock.balance_sheet.to_csv(os.path.join(CACHE_DIR, f"{ticker}_balance_sheet.csv"))
+                if hasattr(stock, 'cashflow') and not stock.cashflow.empty:
+                    stock.cashflow.to_csv(os.path.join(CACHE_DIR, f"{ticker}_cashflow.csv"))
+            except Exception:
+                pass
+                 
+            return True, ticker
+
+        except Exception as e:
+            if attempt < max_retries - 1:
+                # Exponential backoff with jitter
+                sleep_time = (2 ** attempt) + random.uniform(1, 3)
+                time.sleep(sleep_time)
+                continue
+            return False, f"{ticker}: {str(e)}"
 
 def process_baseline():
     """Download baseline data for RS calculation"""
@@ -102,7 +126,7 @@ def process_baseline():
 def main():
     parser = argparse.ArgumentParser(description="Unified Data Downloader for Stock Screeners")
     parser.add_argument('--limit', type=int, help="Limit number of stocks to download")
-    parser.add_argument('--workers', type=int, default=10, help="Number of concurrent download threads")
+    parser.add_argument('--workers', type=int, default=3, help="Number of concurrent download threads")
     args = parser.parse_args()
     
     setup_directories()
@@ -132,7 +156,6 @@ def main():
             if success:
                 success_count += 1
             else:
-                failure_count += 1
                 failures.append(msg)
             
             # Print progress every 10 items or on last item
@@ -143,6 +166,31 @@ def main():
                 print(f"\rProgress: {i + 1}/{total} ({((i+1)/total)*100:.1f}%) - Success: {success_count} - Failures: {failure_count} - ETA: {remaining:.0f}s", end="", flush=True)
 
     print() # Newline after progress
+    
+    if failures:
+        # Extract ticker from error string or use direct ticker
+        failed_tickers = []
+        for fail in failures:
+            if isinstance(fail, str) and ':' in fail:
+                failed_tickers.append(fail.split(':')[0].strip())
+            else:
+                failed_tickers.append(str(fail))
+                
+        console.print(f"\n[yellow]Retrying {len(failed_tickers)} failed tickers sequentially for stability...[/yellow]")
+        time.sleep(3) # Let cookie cooldown
+        
+        still_failed = []
+        for i, t in enumerate(failed_tickers):
+            print(f"\rSequential Cleanup: {i+1}/{len(failed_tickers)}", end="", flush=True)
+            success, msg = process_ticker(t)
+            if success:
+                success_count += 1
+            else:
+                still_failed.append(f"{t}: sequential retry failed")
+        print() # Newline
+        failures = still_failed
+        
+    failure_count = len(failures)
     
     console.print("\n[bold]Download Summary:[/bold]")
     console.print(f"[green]Success: {success_count}[/green]")
