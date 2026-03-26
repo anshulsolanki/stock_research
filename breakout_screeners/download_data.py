@@ -1,3 +1,21 @@
+# -------------------------------------------------------------------------------
+# Project: Stock Analysis (https://github.com/anshulsolanki/stock_analysis)
+# Author:  Anshul Solanki
+# License: MIT License
+# -------------------------------------------------------------------------------
+
+"""
+Unified Data Downloader for Stock Screeners
+
+This script downloads historical price data and financial statements for a list of tickers
+(e.g., Nifty 500) from Yahoo Finance. It uses concurrent threads to speed up the process
+and includes retry logic to handle rate limiting.
+
+Usage:
+------
+python3 download_data.py [--limit N] [--workers W]
+"""
+
 import yfinance as yf
 import pandas as pd
 import json
@@ -31,9 +49,21 @@ class Console:
 console = Console()
 
 def setup_directories():
+    """
+    Creates the cache directory if it doesn't already exist.
+    """
     os.makedirs(CACHE_DIR, exist_ok=True)
 
 def load_tickers(limit=None):
+    """
+    Loads tickers from the Nifty 500 JSON file.
+    
+    Args:
+        limit (int, optional): Maximum number of tickers to returned.
+        
+    Returns:
+        list: List of ticker symbols.
+    """
     if not os.path.exists(JSON_PATH):
         console.print(f"[red]Error: {JSON_PATH} not found.[/red]")
         return []
@@ -50,8 +80,14 @@ def load_tickers(limit=None):
 
 def process_ticker(ticker):
     """
-    Downloads: Info, Daily, Weekly, and Financial statments.
+    Downloads data for a single ticker: Info, Daily, Weekly, and Financial statements.
     Includes retry loops and stagger delays to mitigate Rate Limiting.
+    
+    Args:
+        ticker (str): Ticker symbol.
+        
+    Returns:
+        tuple: (bool, str) Success status and message (ticker or error).
     """
     import random
     daily_path = os.path.join(CACHE_DIR, f"{ticker}_1d.csv")
@@ -80,8 +116,8 @@ def process_ticker(ticker):
             if not df_daily.empty:
                 df_daily.to_csv(daily_path)
             
-            # 3. Weekly Data (3y)
-            df_weekly = stock.history(period="3y", interval="1wk")
+            # 3. Weekly Data (5y)
+            df_weekly = stock.history(period="5y", interval="1wk")
             if not df_weekly.empty:
                 df_weekly.to_csv(weekly_path)
                 
@@ -109,7 +145,9 @@ def process_ticker(ticker):
             return False, f"{ticker}: {str(e)}"
 
 def process_baseline():
-    """Download baseline data for RS calculation"""
+    """
+    Downloads baseline data (e.g., ^NSEI) for Relative Strength calculation.
+    """
     try:
         console.print(f"[blue]Fetching baseline {NSE_BASELINE}...[/blue]")
         cache_path = os.path.join(CACHE_DIR, "NSEI_baseline.csv")
@@ -124,6 +162,10 @@ def process_baseline():
         console.print(f"[red]Error fetching baseline: {e}[/red]")
 
 def main():
+    """
+    Main execution function for the data downloader.
+    Parses arguments, sets up directories, and manages concurrent downloads.
+    """
     parser = argparse.ArgumentParser(description="Unified Data Downloader for Stock Screeners")
     parser.add_argument('--limit', type=int, help="Limit number of stocks to download")
     parser.add_argument('--workers', type=int, default=3, help="Number of concurrent download threads")

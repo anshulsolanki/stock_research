@@ -9,7 +9,7 @@ Bear Market Stock Screener
 
 This script implements 10 strategies for identifying strong stocks in a bear market,
 combining technical resilience and fundamental strength.
-Based on the methodologies described in Strategies.pdf.
+Based on the methodologies described in fundamental_strategies_bearmarket.pdf.
 
 Usage:
 ------
@@ -42,12 +42,13 @@ console = Console()
 
 # Configuration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), 'data')
-CACHE_DIR = os.path.join(BASE_DIR, 'data_cache')
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(BASE_DIR)), 'data')
+CACHE_DIR = os.path.join(os.path.dirname(BASE_DIR), 'data_cache')
 JSON_PATH = os.path.join(DATA_DIR, 'nifty_500.json')
 NSE_BASELINE = "NSEI_baseline.csv"
 TIMESTAMP = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-OUTPUT_DIR = os.path.join(BASE_DIR, 'screener_results', 'bear_market', TIMESTAMP)
+OUTPUT_DIR_BASE = os.path.join(os.path.dirname(BASE_DIR), 'screener_results', 'bear_market')
+OUTPUT_DIR = os.path.join(OUTPUT_DIR_BASE, TIMESTAMP)
 
 # ==========================================
 # PDF Rendering Helpers
@@ -132,6 +133,14 @@ def render_pdf_styled_table(pdf, df, title, description=None):
                   if k[0] == 0:  # Header
                        cell.set_text_props(weight='bold', color='white')
                        cell.set_facecolor('#1e3a8a') # Navy
+                  else:
+                       cell_text = cell.get_text().get_text().strip()
+                       if cell_text == "PASSED":
+                            cell.set_facecolor('#dcfce7') # Light green
+                            cell.get_text().set_color('#166534') # Dark green text
+                       elif cell_text == "FAILED":
+                            cell.set_facecolor('#fee2e2') # Light red
+                            cell.get_text().set_color('#991b1b') # Dark red text
         
         pdf.savefig(fig)
         plt.close(fig)
@@ -657,7 +666,10 @@ def strategy_10_dividend_fortress(data):
 # Main Execution Flow
 # ==========================================
 
-def run_screener(tickers, refresh=False):
+def run_screener(tickers, refresh=False, output_dir=None):
+    if output_dir is None:
+        output_dir = OUTPUT_DIR
+
     strategies = [
         ("Relative Strength", strategy_1_relative_strength),
         ("Deep Value", strategy_2_deep_value),
@@ -668,7 +680,7 @@ def run_screener(tickers, refresh=False):
         ("Magic Formula", strategy_7_magic_formula),
         ("Hedge Fund Screener", strategy_8_hedge_fund),
         ("Margin Resilience", strategy_9_margin_resilience),
-        ("Dividend Fortress", strategy_10_dividend_fortress)
+        ("Dividend Fortress", strategy_10_dividend_fortress),
     ]
 
     results = []
@@ -720,15 +732,15 @@ def run_screener(tickers, refresh=False):
         print(df_top50.to_string(index=False))
         
         # Save Top 50 to CSV (or All to CSV, usually All is better for analysis)
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
-        out_path = os.path.join(OUTPUT_DIR, "bear_market_screen_results.csv")
+        os.makedirs(output_dir, exist_ok=True)
+        out_path = os.path.join(output_dir, "bear_market_screen_results.csv")
         df_all.to_csv(out_path, index=False)
         console.print(f"\n[bold]Results saved to {out_path}[/bold]")
 
         # --- Generate PDF Report ---
-        temp_title = os.path.join(OUTPUT_DIR, f"temp_title.pdf")
-        temp_table = os.path.join(OUTPUT_DIR, f"temp_table.pdf")
-        pdf_path = os.path.join(OUTPUT_DIR, f"Bear_Market_Screener_Results.pdf")
+        temp_title = os.path.join(output_dir, f"temp_title.pdf")
+        temp_table = os.path.join(output_dir, f"temp_table.pdf")
+        pdf_path = os.path.join(output_dir, f"Bear_Market_Fundamental_Screener_Results.pdf")
         
         try:
             from pypdf import PdfWriter
@@ -864,7 +876,7 @@ def run_screener(tickers, refresh=False):
             merger = PdfWriter()
             merger.append(temp_title) # Front Cover
             
-            strategies_pdf = os.path.join(BASE_DIR, "Strategies.pdf")
+            strategies_pdf = os.path.join(BASE_DIR, "fundamental_strategies_bearmarket.pdf")
             if os.path.exists(strategies_pdf):
                  merger.append(strategies_pdf) # Intermediate Pages
             else:
@@ -1065,6 +1077,9 @@ def run_tests():
         'daily': m10_df
     }
     all_passed &= assert_test("Strategy 10", True, True, strategy_10_dividend_fortress(m10))
+
+    m10_fail = {'info': {'dividendYield': 0.03}}
+    all_passed &= assert_test("Strategy 10", False, False, strategy_10_dividend_fortress(m10_fail))
 
     m10_fail = {'info': {'dividendYield': 0.03}}
     all_passed &= assert_test("Strategy 10", False, False, strategy_10_dividend_fortress(m10_fail))
