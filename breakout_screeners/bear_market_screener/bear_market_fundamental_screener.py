@@ -100,7 +100,7 @@ def render_pdf_styled_table(pdf, df, title, description=None):
     if df.empty:
          num_pages = 1
     else:
-         num_pages = (len(df) // rows_per_page) + 1
+         num_pages = (len(df) - 1) // rows_per_page + 1
     
     for i in range(num_pages):
         fig = plt.figure(figsize=(14, 8.5)) 
@@ -671,14 +671,14 @@ def run_screener(tickers, refresh=False, output_dir=None):
         output_dir = OUTPUT_DIR
 
     strategies = [
-        ("Relative Strength", strategy_1_relative_strength),
+        ("RS", strategy_1_relative_strength),
         ("Deep Value", strategy_2_deep_value),
         ("Cash Flow Yield", strategy_3_cash_flow_yield),
-        ("Dollar Earner (Mod)", strategy_4_dollar_earner),
+        ("Dollar Earner", strategy_4_dollar_earner),
         ("Acquirer Multiple", strategy_5_acquirers_multiple),
         ("Net-Nets", strategy_6_net_nets),
         ("Magic Formula", strategy_7_magic_formula),
-        ("Hedge Fund Screener", strategy_8_hedge_fund),
+        ("Hedge Fund", strategy_8_hedge_fund),
         ("Margin Resilience", strategy_9_margin_resilience),
         ("Dividend Fortress", strategy_10_dividend_fortress),
     ]
@@ -754,7 +754,7 @@ def run_screener(tickers, refresh=False, output_dir=None):
                 # Section A: Top 50 
                 render_pdf_styled_table(pdf_tab, df_top50, "Top 50 Ranked Stocks")
                 # Section B: New Leaders (Momentum & Resilience)
-                df_new_leaders = df_all[(df_all['Relative Strength'] == 'PASSED') & (df_all['Hedge Fund Screener'] == 'PASSED')]
+                df_new_leaders = df_all[(df_all['RS'] == 'PASSED') & (df_all['Hedge Fund'] == 'PASSED')]
                 if not df_new_leaders.empty:
                     # Print to console too
                     console.print("\n[bold]--- NEW LEADERS (Momentum & Resilience) ---[/bold]")
@@ -811,7 +811,7 @@ def run_screener(tickers, refresh=False, output_dir=None):
                                                     "Compatibility: High within the tribe, extremely contradictory to Team Momentum.")
 
                 # Section E: Institutional Favorite Combo (Conservative Growth)
-                df_inst = df_all[(df_all['Relative Strength'] == 'PASSED') & (df_all['Margin Resilience'] == 'PASSED')]
+                df_inst = df_all[(df_all['RS'] == 'PASSED') & (df_all['Margin Resilience'] == 'PASSED')]
                 if not df_inst.empty:
                     console.print("\n[bold]--- INSTITUTIONAL FAVORITE COMBO ---[/bold]")
                     print(df_inst.head(50)[['Ticker', 'Score']].to_string(index=False))
@@ -851,8 +851,8 @@ def run_screener(tickers, refresh=False, output_dir=None):
 
                 # Section H: The "Future Leader"
                 df_future = df_all[
-                    (df_all['Relative Strength'] == 'PASSED') & 
-                    (df_all['Hedge Fund Screener'] == 'PASSED') & 
+                    (df_all['RS'] == 'PASSED') & 
+                    (df_all['Hedge Fund'] == 'PASSED') & 
                     (df_all['Magic Formula'] == 'PASSED') & 
                     (df_all['Net-Nets'] == 'FAILED')
                 ]

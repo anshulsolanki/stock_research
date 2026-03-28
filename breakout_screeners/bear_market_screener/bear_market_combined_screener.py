@@ -98,6 +98,15 @@ def main():
     except Exception as e:
         print(f"Error running technical screener: {e}")
 
+    print("\n==================================================")
+    print("Running Famous Trader Screeners...")
+    print("==================================================")
+    try:
+        import famous_trader_screeners
+        famous_trader_screeners.run_screener(tickers, refresh=args.refresh, output_dir=output_dir)
+    except Exception as e:
+        print(f"Error running famous trader screeners: {e}")
+
     print(f"\nMaster Screener execution complete. Reports are in {output_dir}")
 
 if __name__ == "__main__":

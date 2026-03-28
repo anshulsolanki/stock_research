@@ -100,7 +100,7 @@ def render_pdf_styled_table(pdf, df, title, description=None):
     if df.empty:
          num_pages = 1
     else:
-         num_pages = (len(df) // rows_per_page) + 1
+         num_pages = (len(df) - 1) // rows_per_page + 1
     
     for i in range(num_pages):
         fig = plt.figure(figsize=(14, 8.5)) 
@@ -702,8 +702,8 @@ def run_screener(tickers, refresh=False, output_dir=None):
         ("Oversold Reversal", strategy_11_oversold_reversal),
         ("BB Exhaustion", strategy_12_bb_exhaustion),
         ("Beaten Down Quality", strategy_13_beaten_down_quality),
-        ("Mean Reversion (Rubber Band)", strategy_14_mean_reversion_rubber_band),
-        ("Relative Strength (New)", strategy_15_relative_strength_new_leaders),
+        ("Mean Reversion", strategy_14_mean_reversion_rubber_band),
+        ("Relative Strength", strategy_15_relative_strength_new_leaders),
         ("Capitulation", strategy_16_capitulation_volume_washout)
     ]
 
