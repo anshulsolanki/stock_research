@@ -32,6 +32,7 @@ SOFTWARE.
 
 import argparse
 import time
+import random
 import os
 from playwright.sync_api import sync_playwright
 from dotenv import load_dotenv
@@ -48,48 +49,149 @@ load_dotenv(os.path.join(ROOT_DIR, '.env'))
 USERNAME = os.getenv("TRENDLYNE_USERNAME")
 PASSWORD = os.getenv("TRENDLYNE_PASSWORD")
 
-def login_if_needed(page):
+# Path for persistent browser data (shared across functions)
+USER_DATA_DIR = os.path.join(SCRIPT_DIR, "trendlyne_user_data")
+
+
+def _is_logged_in(page):
+    """Check multiple indicators to determine if user is logged in."""
+    # Check for profile dropdown
+    if page.locator(".tl-profile-dropdown").count() > 0:
+        return True
+    # Check for any user avatar/icon that appears when logged in
+    if page.locator(".tl-user-avatar, .user-profile-icon, .navbar-profile").count() > 0:
+        return True
+    # Check if login button is absent (it disappears after login)
+    if page.locator("#login-signup-btn").count() == 0:
+        return True
+    return False
+
+
+def _attempt_automated_login(page):
+    """
+    Try to log in with human-like typing to pass reCAPTCHA v3.
+    Returns True if login succeeded, False otherwise.
+    """
+    if not USERNAME or not PASSWORD:
+        print("WARNING: TRENDLYNE_USERNAME or TRENDLYNE_PASSWORD not found in .env file.")
+        return False
+
+    # Click the Login/Signup button
+    if page.locator("#login-signup-btn").count() == 0:
+        print("Login button not found. Unexpected state.")
+        return False
+
+    page.click("#login-signup-btn")
+
+    # Wait for the login modal to fully animate open
+    page.wait_for_selector("#id_login", state="visible", timeout=10000)
+    time.sleep(random.uniform(0.5, 1.0))
+
+    print(f"Logging in as {USERNAME}...")
+
+    # Clear fields first, then type with human-like delays (helps reCAPTCHA v3 scoring)
+    page.click("#id_login")
+    page.fill("#id_login", "")
+    page.type("#id_login", USERNAME, delay=random.randint(40, 90))
+
+    time.sleep(random.uniform(0.3, 0.7))
+
+    page.click("#id_password")
+    page.fill("#id_password", "")
+    page.type("#id_password", PASSWORD, delay=random.randint(40, 90))
+
+    # Small pause before clicking login (human behavior)
+    time.sleep(random.uniform(0.5, 1.5))
+
+    # Click the Login button
+    page.click(".login-btn")
+
+    # Wait for login to complete — check multiple signals
+    try:
+        # Wait for either the profile dropdown to appear OR the login modal to disappear
+        page.wait_for_selector(
+            ".tl-profile-dropdown, .tl-user-avatar, .navbar-profile",
+            timeout=15000
+        )
+        print("Login successful.")
+        return True
+    except Exception:
+        # Check if login button disappeared (another success signal)
+        time.sleep(2)
+        if _is_logged_in(page):
+            print("Login successful (detected via button absence).")
+            return True
+        return False
+
+
+def _manual_login_fallback():
+    """
+    Opens a visible browser for the user to log in manually once.
+    The session is saved in the persistent context for future headless runs.
+    """
+    print("\n" + "=" * 60)
+    print("AUTOMATED LOGIN FAILED (likely blocked by reCAPTCHA).")
+    print("Opening a browser window for ONE-TIME manual login...")
+    print("Please log in manually, then CLOSE the browser window.")
+    print("Future runs will reuse this saved session.")
+    print("=" * 60 + "\n")
+
+    with sync_playwright() as p:
+        context = p.chromium.launch_persistent_context(
+            USER_DATA_DIR,
+            headless=False,
+            channel="chrome",
+            viewport={'width': 1920, 'height': 1080},
+            user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        )
+        page = context.new_page()
+        page.goto("https://trendlyne.com/")
+
+        # Wait for the user to log in and the profile dropdown to appear
+        print("Waiting for you to log in... (will auto-detect when done)")
+        try:
+            # Give the user up to 5 minutes to manually log in
+            page.wait_for_selector(".tl-profile-dropdown", timeout=300000)
+            print("Manual login detected! Saving session...")
+            time.sleep(2)  # Let cookies settle
+        except Exception:
+            print("Timed out waiting for manual login. Continuing without login.")
+
+        context.close()
+
+
+def login_if_needed(page, allow_manual_fallback=True):
     """
     Checks if the user is logged in. If not, performs the login action.
+    Uses human-like typing to avoid reCAPTCHA blocks.
+    Falls back to manual login in a visible browser if automated login fails.
     """
     try:
         print("Checking login status...")
-        # Check if the profile dropdown exists (indicator of being logged in)
-        # We use a short timeout because we expect it to be there immediately if logged in
-        if page.locator(".tl-profile-dropdown").count() > 0:
+
+        if _is_logged_in(page):
             print("User is already logged in.")
             return
 
-        print("User is NOT logged in. Attempting to log in...")
-        
-        # Click the Login/Signup button
-        if page.locator("#login-signup-btn").count() > 0:
-            page.click("#login-signup-btn")
+        print("User is NOT logged in. Attempting automated login...")
+
+        if _attempt_automated_login(page):
+            return
+
+        # Automated login failed — try manual fallback
+        if allow_manual_fallback:
+            _manual_login_fallback()
+            # After manual login, reload the page to pick up the session
+            page.reload()
+            page.wait_for_load_state("networkidle")
+            if _is_logged_in(page):
+                print("Session restored from manual login.")
+                return
+            else:
+                print("Manual login session not detected. Continuing without login.")
         else:
-            print("Login button not found, and not logged in. unexpected state.")
-            return
+            print("Automated login failed. Continuing without login.")
 
-        # Wait for the login modal/form
-        page.wait_for_selector("#id_login")
-        
-        # Fill credentials
-        # Check if USERNAME/PASSWORD are set
-        if not USERNAME or not PASSWORD:
-            print("WARNING: TRENDLYNE_USERNAME or TRENDLYNE_PASSWORD not found in .env file.")
-            return
-
-        print(f"Logging in as {USERNAME}...")
-        page.fill("#id_login", USERNAME)
-        page.fill("#id_password", PASSWORD)
-        
-        # Click the Login button
-        # The modal usually has a submit button. Based on inspection, it's often a button with class 'login-btn'
-        page.click(".login-btn")
-        
-        # Wait for login to complete (profile dropdown should appear)
-        page.wait_for_selector(".tl-profile-dropdown", timeout=25000)
-        print("Login successful.")
-        
     except Exception as e:
         print(f"Login process failed or encountered an error: {e}")
         # We continue even if login fails, as some public info might still be accessible
@@ -115,16 +217,13 @@ def get_trendlyne_snapshots(stock_name="Dabur", output_dir=".", headless=True, s
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-    # Path for persistent browser data
-    user_data_dir = os.path.join(SCRIPT_DIR, "trendlyne_user_data")
-
     generated_files = []
 
     with sync_playwright() as p:
         # Launch persistent context to reuse sessions
         # Viewport and User Agent are set here
         context = p.chromium.launch_persistent_context(
-            user_data_dir,
+            USER_DATA_DIR,
             headless=headless,
             channel="chrome",
             viewport={'width': 1920, 'height': 1080},
