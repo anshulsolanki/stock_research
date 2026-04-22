@@ -114,7 +114,7 @@ DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), 'data')
 TIMESTAMP = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 OUTPUT_DIR = os.path.join(BASE_DIR, 'screener_results', 'CAMSLIM_breakouts', TIMESTAMP)
 CHARTS_DIR = os.path.join(OUTPUT_DIR, 'charts')
-CACHE_DIR = os.path.join(BASE_DIR, 'data_cache')
+CACHE_DIR = os.path.join(DATA_DIR, 'data_cache')
 JSON_PATH = os.path.join(DATA_DIR, 'nifty_500.json')
 PDF_PATH = os.path.join(OUTPUT_DIR, f"CANSLIM_Screener_Results_{TIMESTAMP}.pdf")
 

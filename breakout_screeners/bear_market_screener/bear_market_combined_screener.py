@@ -102,8 +102,8 @@ def main():
     print("Running Famous Trader Screeners...")
     print("==================================================")
     try:
-        import famous_trader_screeners
-        famous_trader_screeners.run_screener(tickers, refresh=args.refresh, output_dir=output_dir)
+        import famous_trader_strategies
+        famous_trader_strategies.run_screener(tickers, refresh=args.refresh, output_dir=output_dir)
     except Exception as e:
         print(f"Error running famous trader screeners: {e}")
 

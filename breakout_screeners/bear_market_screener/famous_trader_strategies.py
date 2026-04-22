@@ -77,7 +77,7 @@ console = Console()
 # Configuration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(BASE_DIR)), 'data')
-CACHE_DIR = os.path.join(os.path.dirname(BASE_DIR), 'data_cache')
+CACHE_DIR = os.path.join(DATA_DIR, 'data_cache')
 JSON_PATH = os.path.join(DATA_DIR, 'nifty_500.json')
 NSE_BASELINE_PATH = os.path.join(CACHE_DIR, "NSEI_baseline.csv")
 TIMESTAMP = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -510,51 +510,7 @@ def create_pdf_strategies_description_page(pdf):
     
     y = 0.88
     
-    # 1. Paul Tudor Jones
-    fig.text(0.1, y, "The Paul Tudor Jones \"200-Day Defense\"", fontsize=14, weight='bold', color=ACCENT_COLOR)
-    y -= 0.02
-    text_ptj = (
-        "Paul Tudor Jones famously uses the 200-day Moving Average as his 'line in the sand.' "
-        "He stays out of the market entirely when it's below this line, but uses it to identify the exact turn of a bear market.\\n"
-        "The Logic: 'The very best money is made at the market turns.' He doesn't buy a dip; he buys the reversal.\\n"
-        "Screener Recipe (Technical Reversal):\\n"
-        "Condition A: The index (Nifty 50) is still below its 200-day SMA (confirms a bear market).\\n"
-        "Condition B (The Signal): The individual stock has just crossed above its 200-day SMA on high volume.\\n"
-        "Volume: Current day's volume is > 2x the 10-day average.\\n"
-        "Why it works: These are the 'First Movers.' If a stock can break its 200-day average while the Nifty is still crashing, it has massive institutional support."
-    )
-    fig.text(0.12, y, text_ptj, ha='left', va='top', fontsize=10, color=SECONDARY_COLOR, wrap=True)
-    y -= 0.22 # Adjust spacing
-    
-    # 2. David Dreman
-    fig.text(0.1, y, "The David Dreman \"Contrarian\" Screener", fontsize=14, weight='bold', color=ACCENT_COLOR)
-    y -= 0.02
-    text_dreman = (
-        "David Dreman is the king of contrarians. He famously argued that the 'unpopular' stocks (those the market hates during a war or crisis) almost always outperform the 'glamour' stocks over time.\\n"
-        "The Logic: During a bear market, high-PE growth stocks crash the hardest. Dreman looks for the 'unloved' giants that have stable businesses but 'trashy' valuations.\\n"
-        "Screener Recipe (Fundamental):\\n"
-        "P/E Ratio: Bottom 40% of the market (usually < 15 in India).\\n"
-        "Market Cap: Top 500 companies (to ensure they have the 'staying power' to survive a war/recession).\\n"
-        "Dividend Yield: > 1.5 * Market Average (He loves being paid to wait).\\n"
-        "Payout Ratio: < 50% (Ensures the dividend is safe).\\n"
-        "Debt to Equity: < 0.5."
-    )
-    fig.text(0.12, y, text_dreman, ha='left', va='top', fontsize=10, color=SECONDARY_COLOR, wrap=True)
-    y -= 0.24 # Adjust spacing
-    
-    # 3. Michael Burry
-    fig.text(0.1, y, "The Michael Burry \"Deep Value\" Screener", fontsize=14, weight='bold', color=ACCENT_COLOR)
-    y -= 0.02
-    text_burry = (
-        "Michael Burry is famous for his 'Big Short' against the housing bubble, but his core philosophy is finding 'Rare Birds'—stocks trading for less than their liquidation value.\\n"
-        "The Logic: In a panic, the market often sells off stocks to a point where the company is worth more dead than alive. Burry looks for companies where you are essentially getting the business operations for free because the stock price is covered by cash or hard assets.\\n"
-        "Screener Recipe (Fundamental + Technical):\\n"
-        "Enterprise Value / EBITDA: < 5 (Extremely cheap).\\n"
-        "Price to Book Value: < 0.8.\\n"
-        "Proximity to Low: Price is within 10% to 15% of its 52-week Low.\\n"
-        "Institutional Selling: FII/DII holding has already dropped (indicating 'weak hands' have exited)."
-    )
-    fig.text(0.12, y, text_burry, ha='left', va='top', fontsize=10, color=SECONDARY_COLOR, wrap=True)
+
     
     pdf.savefig(fig)
     plt.close(fig)
@@ -705,9 +661,7 @@ def run_screener(tickers, refresh=False, output_dir=None):
             with PdfPages(temp_title) as pdf_t:
                 create_pdf_title_page(pdf_t, TIMESTAMP)
 
-            # 2. Create Description Page
-            with PdfPages(temp_desc) as pdf_d:
-                create_pdf_strategies_description_page(pdf_d)
+
 
             # 3. Create Summary Table pages
             with PdfPages(temp_table) as pdf_tab:
@@ -734,7 +688,13 @@ def run_screener(tickers, refresh=False, output_dir=None):
             # 4. Merge PDFs
             merger = PdfWriter()
             merger.append(temp_title)
-            merger.append(temp_desc)
+            
+            famous_trader_pdf = "/Users/solankianshul/Documents/projects/stock_research/breakout_screeners/bear_market_screener/famous_trader_screener.pdf"
+            if os.path.exists(famous_trader_pdf):
+                 merger.append(famous_trader_pdf)
+            else:
+                 console.print(f"[yellow]Warning: {famous_trader_pdf} not found to merge.[/yellow]")
+                 
             merger.append(temp_table)
 
             with open(pdf_path, 'wb') as f:

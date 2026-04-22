@@ -27,7 +27,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # Configuration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), 'data')
-CACHE_DIR = os.path.join(BASE_DIR, 'data_cache')
+CACHE_DIR = os.path.join(DATA_DIR, 'data_cache')
 JSON_PATH = os.path.join(DATA_DIR, 'nifty_500.json')
 NSE_BASELINE = "^NSEI"
 
