@@ -61,6 +61,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import scipy.signal
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Initialize Console (Dummy wrapper for now, similar to canslim_screener)
 class Console:
@@ -121,19 +122,35 @@ def load_tickers(limit=None):
         console.print(f"[red]Error: {JSON_PATH} not found.[/red]")
         return []
 
-def calculate_rs_ratings(tickers):
-    """Calculate strong 1-99 True Relative Strength rank across our universe."""
+def calculate_rs_ratings(tickers, end_date=None):
+    """Calculate IBD-style weighted Relative Strength rank across our universe.
+    
+    Uses a weighted formula: 40% most recent quarter, 20% each for prior 3 quarters.
+    This emphasizes recent momentum, similar to IBD's Relative Strength rating.
+    """
     returns = {}
     with console.status(f"[blue]Calculating Relative Strength rankings for {len(tickers)} stocks...[/blue]"):
         for ticker in tickers:
             cache_path = os.path.join(CACHE_DIR, f"{ticker}_1d.csv")
             if os.path.exists(cache_path):
                 df = pd.read_csv(cache_path, index_col=0, parse_dates=True)
-                if len(df) > 200:
+                # Truncate to end_date if specified
+                if end_date is not None:
+                    end_ts = pd.Timestamp(end_date)
+                    if df.index.tz is not None:
+                        end_ts = end_ts.tz_localize(df.index.tz)
+                    df = df[df.index <= end_ts]
+                if len(df) > 252:
                     try:
-                        ret_1y = (df['Close'].iloc[-1] - df['Close'].iloc[-252]) / df['Close'].iloc[-252]
-                        returns[ticker] = ret_1y
-                    except IndexError:
+                        close = df['Close']
+                        # IBD-style weighted RS: 40% Q1 (recent), 20% each for Q2-Q4
+                        q1 = (close.iloc[-1] - close.iloc[-63]) / close.iloc[-63]
+                        q2 = (close.iloc[-63] - close.iloc[-126]) / close.iloc[-126]
+                        q3 = (close.iloc[-126] - close.iloc[-189]) / close.iloc[-189]
+                        q4 = (close.iloc[-189] - close.iloc[-252]) / close.iloc[-252]
+                        weighted_return = 0.4 * q1 + 0.2 * q2 + 0.2 * q3 + 0.2 * q4
+                        returns[ticker] = weighted_return
+                    except (IndexError, ZeroDivisionError):
                         pass
     
     if not returns:
@@ -174,11 +191,22 @@ def fetch_data(ticker, refresh=False):
     except Exception as e:
         return None
 
-def check_criteria(data, ticker, rs_rating, use_fundamentals=False, use_volume_dryup=False):
+def check_criteria(data, ticker, rs_rating, use_fundamentals=False, use_volume_dryup=False, end_date=None):
     info = data.get('info', {})
     df = data.get('history', None)
     
-    if df is None or df.empty or len(df) < 200:
+    if df is None or df.empty:
+        return None
+    
+    # Truncate data to end_date if specified (for historical backtesting)
+    if end_date is not None:
+        end_ts = pd.Timestamp(end_date)
+        # Match timezone of dataframe index (yfinance returns tz-aware timestamps)
+        if df.index.tz is not None:
+            end_ts = end_ts.tz_localize(df.index.tz)
+        df = df[df.index <= end_ts].copy()
+    
+    if len(df) < 200:
         return None
         
     # --- 1. Macro Setup (Trend Template) ---
@@ -232,29 +260,32 @@ def check_criteria(data, ticker, rs_rating, use_fundamentals=False, use_volume_d
         if sales_growth < MIN_SALES_GROWTH: return None
 
     # --- 3. VCP Logic (Contractions) ---
-    # Smooth with EMA to find "clean" swings
+    # Smooth with EMA to find "clean" swings (used only for detection)
     df['SmoothClose'] = df['Close'].ewm(span=5).mean()
-    closes_smoothed = df['SmoothClose'].tail(90).values
-    if use_volume_dryup:
-        volumes = df['Volume'].tail(90).values
-    peaks, _ = scipy.signal.find_peaks(closes_smoothed, distance=15)
-    troughs, _ = scipy.signal.find_peaks(-closes_smoothed, distance=15)
     
-    if len(peaks) < 2 or len(troughs) < 2:
+    # Adaptive window: scan up to 130 trading days (~26 weeks max base)
+    vcp_window = min(130, len(df))
+    closes_smoothed = df['SmoothClose'].tail(vcp_window).values
+    raw_closes = df['Close'].tail(vcp_window).values
+    raw_lows = df['Low'].tail(vcp_window).values
+    if use_volume_dryup:
+        volumes = df['Volume'].tail(vcp_window).values
+    
+    # Peak/trough detection with prominence to filter insignificant wiggles
+    mean_price = np.mean(closes_smoothed)
+    prominence_threshold = 0.02 * mean_price
+    peaks, _ = scipy.signal.find_peaks(closes_smoothed, distance=10, prominence=prominence_threshold)
+    troughs, _ = scipy.signal.find_peaks(-closes_smoothed, distance=10, prominence=prominence_threshold)
+    
+    if len(peaks) < 2 or len(troughs) < 1:
         return None # Not enough swings
-        
-    # Check if peaks are within a tight 2-3% range of each other (The Resistance Zone)
-    peak_prices = closes_smoothed[peaks[-3:]] if len(peaks) >= 3 else closes_smoothed[peaks]
-    resistance_level = np.mean(peak_prices)
-    peak_variance = (np.max(peak_prices) - np.min(peak_prices)) / resistance_level
 
-    if peak_variance > 0.1: # If peaks vary by more than 10%, it's not a "flat top"
-        return None
-
-    # Align peaks and troughs to calculate depths
-    # We want Peak -> Trough sequence
+    # Align peaks and troughs to calculate pullback depths
+    # We want Peak -> subsequent Trough sequence
     pullbacks = []
     pullback_vols = []
+    pullback_peak_indices = []  # Track which peaks produced valid pullbacks
+    pullback_trough_indices = []
     for p in peaks:
         # Find the first trough after this peak
         valid_troughs = troughs[troughs > p]
@@ -264,6 +295,8 @@ def check_criteria(data, ticker, rs_rating, use_fundamentals=False, use_volume_d
             trough_val = closes_smoothed[t]
             depth = (peak_val - trough_val) / peak_val
             pullbacks.append(depth)
+            pullback_peak_indices.append(p)
+            pullback_trough_indices.append(t)
             
             if use_volume_dryup:
                 # Calculate average volume during this pullback period
@@ -275,8 +308,8 @@ def check_criteria(data, ticker, rs_rating, use_fundamentals=False, use_volume_d
         
     # Check for progressive contraction (getting smaller)
     # E.g., depth1 > depth2 > depth3
-    # We check the last few pullbacks
     recent_pullbacks = pullbacks[-3:] if len(pullbacks) >= 3 else pullbacks
+    recent_peak_indices = pullback_peak_indices[-3:] if len(pullback_peak_indices) >= 3 else pullback_peak_indices
     if use_volume_dryup:
         recent_vols = pullback_vols[-3:] if len(pullback_vols) >= 3 else pullback_vols
         
@@ -299,28 +332,44 @@ def check_criteria(data, ticker, rs_rating, use_fundamentals=False, use_volume_d
     if recent_pullbacks[-1] > 0.06:
         return None
 
-    # --- 4. Volume Dry-Up and Breakout ---
-    # Pivot Point is the peak of the final contraction
-    final_peak_idx = peaks[-1]
-    pivot_point = closes_smoothed[final_peak_idx]
+    # Flat Top Resistance Guard: aligned with pullback peaks + the pivot peak
+    pivot_peak_idx = peaks[-1]
+    resistance_peak_indices = sorted(set(list(recent_peak_indices) + [pivot_peak_idx]))
+    peak_prices = closes_smoothed[resistance_peak_indices]
+    resistance_level = np.mean(peak_prices)
+    peak_variance = (np.max(peak_prices) - np.min(peak_prices)) / resistance_level
+
+    if peak_variance > 0.1: # If peaks vary by more than 10%, it's not a "flat top"
+        return None
+
+    # Base Length Validation: pattern should span 3-26 weeks (15-130 trading days)
+    base_start = recent_peak_indices[0]
+    base_end = pivot_peak_idx
+    base_length = base_end - base_start
+    if base_length < 15 or base_length > 130:
+        return None
+
+    # --- 4. Breakout and Risk Management ---
+    # Pivot Point: use RAW close price at detected peak (not smoothed)
+    pivot_point = raw_closes[pivot_peak_idx]
     
     # Entry Trigger: Today's close > Pivot
     if current_close <= pivot_point:
         return None
         
-    # Volume Confirmation: Breakout vol >= 150% of 50-day avg
-    if current_vol < vol_sma_50 * 1.5:
+    # Volume Confirmation: Breakout vol >= 130% of 50-day avg (30% above average)
+    if current_vol < vol_sma_50 * 1.3:
         return None
         
-    # Stop Loss: Slightly below the low of the final contraction
-    # Find trough after final peak or use the most recent trough
-    final_troughs = troughs[troughs > final_peak_idx]
-    if len(final_troughs) > 0:
-        stop_loss = closes_smoothed[final_troughs[0]] * 0.98 # 2% below the low
+    # Stop Loss: use RAW Low price at the final trough (not smoothed close)
+    # The final contraction's low is the last trough before the pivot
+    pre_pivot_troughs = troughs[troughs < pivot_peak_idx]
+    if len(pre_pivot_troughs) > 0:
+        stop_loss = raw_lows[pre_pivot_troughs[-1]] * 0.98 # 2% below the raw low
     else:
-        stop_loss = closes_smoothed[troughs[-1]] * 0.98 if len(troughs) > 0 else current_close * 0.92
+        stop_loss = current_close * 0.92 # Fallback: 8% below current price
         
-    # Target (Default to 25% similar to CANSLIM or fixed multiplier)
+    # Target (25% gain from pivot)
     target_price = pivot_point * 1.25
     
     # Risk/Reward
@@ -513,7 +562,19 @@ def render_pdf_styled_table(pdf, df, title):
         pdf.savefig(fig)
         plt.close(fig)
 
-def generate_chart(df, ticker, result, pdf=None):
+def generate_chart(df, ticker, result, pdf=None, end_date=None):
+    # Truncate to end_date if specified
+    if end_date is not None:
+        end_ts = pd.Timestamp(end_date)
+        if df.index.tz is not None:
+            end_ts = end_ts.tz_localize(df.index.tz)
+        df = df[df.index <= end_ts]
+    # Ensure SMA columns exist (they may be missing if check_criteria worked on a copy)
+    if 'SMA50' not in df.columns:
+        df['SMA50'] = df['Close'].rolling(window=50).mean()
+        df['SMA150'] = df['Close'].rolling(window=150).mean()
+        df['SMA200'] = df['Close'].rolling(window=200).mean()
+        df['VolSMA50'] = df['Volume'].rolling(window=50).mean()
     plot_df = df.tail(150)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]}, sharex=True)
     
@@ -572,7 +633,16 @@ def main():
     parser.add_argument('--refresh', action='store_true', help="Force refresh of cached data")
     parser.add_argument('--use-fundamentals', action='store_true', default=True, help="Enable fundamental and RS filters")
     parser.add_argument('--use-volume-dryup', action='store_true', default=False, help="Enable volume dry-up filter during contractions")
+    parser.add_argument('--end-date', type=str, default=None, help="Run screener up to this date (YYYY-MM-DD). Uses all available data if not set.")
     args = parser.parse_args()
+    
+    if args.end_date:
+        try:
+            pd.Timestamp(args.end_date)
+            console.print(f"[cyan]Running screener with end date: {args.end_date}[/cyan]")
+        except ValueError:
+            console.print(f"[red]Invalid date format: {args.end_date}. Use YYYY-MM-DD.[/red]")
+            return
     
     setup_directories()
     tickers = load_tickers()
@@ -585,13 +655,19 @@ def main():
         
     rs_ratings = {}
     if args.use_fundamentals:
-        rs_ratings = calculate_rs_ratings(tickers)
+        rs_ratings = calculate_rs_ratings(tickers, end_date=args.end_date)
     # Get Market Condition
     market_status = "Unknown"
     try:
         with console.status("[blue]Fetching NIFTY 50 Market Condition...[/blue]"):
             nifty = yf.Ticker('^NSEI')
-            nifty_df = nifty.history(period="6mo")
+            nifty_df = nifty.history(period="2y")
+            # Truncate to end_date if specified
+            if args.end_date:
+                end_ts = pd.Timestamp(args.end_date)
+                if nifty_df.index.tz is not None:
+                    end_ts = end_ts.tz_localize(nifty_df.index.tz)
+                nifty_df = nifty_df[nifty_df.index <= end_ts]
             if len(nifty_df) >= 50:
                 nifty_df['SMA50'] = nifty_df['Close'].rolling(window=50).mean()
                 current_nifty = nifty_df['Close'].iloc[-1]
@@ -605,15 +681,29 @@ def main():
 
     results = []
     
-    with console.status(f"[bold green]Scanning {len(tickers)} stocks against Minervini VCP...[/bold green]"):
-        for ticker in tickers:
-            data = fetch_data(ticker, refresh=args.refresh)
-            if data:
-                rs = rs_ratings.get(ticker, 0) if args.use_fundamentals else 0
-                match = check_criteria(data, ticker, rs, use_fundamentals=args.use_fundamentals, use_volume_dryup=args.use_volume_dryup)
-                if match:
-                    console.print(f"[green]FOUND VCP: {ticker} (Pullbacks: {match['Pullbacks']}%) [/green]")
+    def scan_ticker(ticker):
+        """Scan a single ticker for VCP pattern (used by ThreadPoolExecutor)."""
+        data = fetch_data(ticker, refresh=args.refresh)
+        if data:
+            rs = rs_ratings.get(ticker, 0) if args.use_fundamentals else 0
+            match = check_criteria(data, ticker, rs, use_fundamentals=args.use_fundamentals, use_volume_dryup=args.use_volume_dryup, end_date=args.end_date)
+            if match:
+                return (match, data)
+        return None
+    
+    console.print(f"[bold green]Scanning {len(tickers)} stocks against Minervini VCP (parallel)...[/bold green]")
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {executor.submit(scan_ticker, t): t for t in tickers}
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                if result:
+                    match, data = result
+                    console.print(f"[green]FOUND VCP: {match['Ticker']} (Pullbacks: {match['Pullbacks']}%) [/green]")
                     results.append((match, data))
+            except Exception as e:
+                ticker = futures[future]
+                console.print(f"[yellow]Error scanning {ticker}: {e}[/yellow]")
     
     if results:
         with PdfPages(PDF_PATH) as pdf:
@@ -625,7 +715,7 @@ def main():
             render_pdf_styled_table(pdf, df_results, "Minervini VCP Screener Results")
             
             for match, data in results:
-                generate_chart(data['history'], match['Ticker'], match, pdf=pdf)
+                generate_chart(data['history'], match['Ticker'], match, pdf=pdf, end_date=args.end_date)
                 
             df_results.to_csv(os.path.join(OUTPUT_DIR, 'results.csv'), index=False)
             console.print(f"\n[bold]Results saved to {OUTPUT_DIR}/results.csv[/bold]")
