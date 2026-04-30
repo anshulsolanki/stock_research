@@ -12,34 +12,42 @@ to identify high-growth stocks in Stage 2 uptrends with tight price consolidatio
 
 Minervini Strategy Criteria:
 ----------------------------
-Phase 1: The Macro Setup (Trend Template)
-- Current Price > 50-day, 150-day, and 200-day SMAs.
-- 50-day SMA > 150-day SMA > 200-day SMA.
-- 200-day SMA is rising (compared to 20 days ago).
-- Current Price is at least 30% above its 52-week low.
-- Current Price is within 25% of its 52-week high.
-- Relative Strength: Percentile rank of 1-year returns >= 70.
 
-Integrate Fundamental Filters (SEPA):
-- EPS Growth: Most recent quarter EPS > 20% YoY.
-- Revenue Growth: Most recent quarter Sales > 15% YoY.
+Here is a step-by-step breakdown of how the code implements the VCP logic.
 
-Phase 2: Identifying the Contractions (The Swings)
-- Progressive pullbacks: Pullback_1 > Pullback_2 > Pullback_3 etc.
-- Use scipy.signal.find_peaks to find local highs and lows.
+1. Phase 1: The Macro Setup (Trend Template)
+- Before looking for a VCP, the script ensures the stock is in a confirmed Stage 2 Uptrend. It does this by calculating moving averages and 52-week highs/lows on the last 200+ days of data.
+- Moving Average Stacking: It checks that the current price is above the 50-day, 150-day, and 200-day Simple Moving Averages (SMAs). It also strictly enforces the order: SMA50 > SMA150 > SMA200.
+- Rising 200 SMA: It compares the current 200-day SMA to its value 20 days ago (prev_sma_200) to ensure the long-term trend is pointing upward.
+- Price Proximity Filters: The stock must be at least 30% above its 52-week low (MIN_PRICE_TO_LOW = 1.30) and within 25% of its 52-week high (MAX_PRICE_TO_HIGH = 0.75).
+Note: If the --use-fundamentals flag is passed, it also enforces SEPA fundamental criteria: Relative Strength (RS) rating >= 70, Quarterly EPS growth >= 20%, and Quarterly Sales growth >= 15%.
 
-Phase 3: Volume Dry-Up
-- Volume shrinks as contractions get smaller.
+2. Phase 2 & 3: Identifying the Contractions (The VCP Logic)
+if the macro setup is valid, the script analyzes the last 90 days of price action to find the actual Volatility Contraction Pattern.
+- Data Smoothing: Real stock data is noisy, which makes finding exact pivot highs and lows difficult programmatically. The script solves this by applying a 5-day Exponential Moving Average (df['Close'].ewm(span=5).mean()) to smooth the price curve.
+- Peak and Trough Detection: It uses scipy.signal.find_peaks with a minimum distance of 15 days (distance=15) on the smoothed data to identify local highs (peaks) and local lows (troughs).
+- Flat Top Resistance Guard: It takes the last 3 peaks and checks their variance (peak_variance). If the peaks vary by more than 10%, the script discards the stock because a valid VCP requires a relatively "flat top" resistance zone, not wild swings.
+- Calculating Pullback Depths: The script iterates through the identified peaks, finds the immediate subsequent trough, and calculates the percentage drop (depth) of that specific swing: (peak_val - trough_val) / peak_val.
+- Progressive Contraction Guard: This is the heart of Minervini's strategy. The script checks the last 2 or 3 pullbacks to ensure they are getting progressively smaller from left to right (e.g., recent_pullbacks[0] > recent_pullbacks[1] > recent_pullbacks[2]).
+- Final Tightness Guard: The very last pullback (the right side of the base) must be incredibly tight—specifically, less than or equal to a 6% drop (recent_pullbacks[-1] <= 0.06).
+Note: If the --use-volume-dryup flag is passed, it also checks that the average volume during these pullback periods is progressively decreasing, indicating a dry-up of selling pressure.
 
-Phase 4: The Pivot Point and Breakout
-- Pivot Point = Peak of final contraction.
-- Entry Trigger: Current Close > Pivot Point.
-- Volume Confirmation: Breakout volume >= 150% of 50-day average.
-- Stop Loss: Slightly below the low of the final contraction.
+3. Phase 4: Breakout, Volume, and Risk Management
+Finally, if a valid contraction pattern exists, the script checks if a breakout is currently occurring.
+- The Pivot Point: The script defines the pivot_point as the price of the final (most recent) peak in the contraction.
+- Entry Trigger: The current close must be greater than the pivot_point.
+- Volume Confirmation: Professional buying must accompany the breakout. The script enforces that the current day's volume is at least 150% of the 50-day average volume (current_vol >= vol_sma_50 * 1.5).
+
+Risk Management Calculations:
+- Stop Loss: Placed 2% below the low of the final trough (closes_smoothed[final_troughs[0]] * 0.98).
+- Target: Automatically set to a 25% gain from the pivot point (pivot_point * 1.25).
+- Risk/Reward: Calculates the ratio of the expected reward against the risk to the stop loss.
+
+If all these conditions evaluate to True, the stock is flagged as a match, its metrics are formatted into a dictionary, and the main thread eventually plots it onto a PDF report using matplotlib.
 
 Usage:
 ------
-python minervini_screener.py [--limit N] [--sample N] [--refresh]
+python minervini_screener.py [--limit N] [--sample N] [--refresh] [--use-fundamentals] [--use-volume-dryup]
 """
 
 # Imports
@@ -224,16 +232,25 @@ def check_criteria(data, ticker, rs_rating, use_fundamentals=False, use_volume_d
         if sales_growth < MIN_SALES_GROWTH: return None
 
     # --- 3. VCP Logic (Contractions) ---
-    # Use closing prices for peak finding to be conservative
-    closes = df['Close'].tail(90).values
+    # Smooth with EMA to find "clean" swings
+    df['SmoothClose'] = df['Close'].ewm(span=5).mean()
+    closes_smoothed = df['SmoothClose'].tail(90).values
     if use_volume_dryup:
         volumes = df['Volume'].tail(90).values
-    peaks, _ = scipy.signal.find_peaks(closes, distance=10)
-    troughs, _ = scipy.signal.find_peaks(-closes, distance=10)
+    peaks, _ = scipy.signal.find_peaks(closes_smoothed, distance=15)
+    troughs, _ = scipy.signal.find_peaks(-closes_smoothed, distance=15)
     
     if len(peaks) < 2 or len(troughs) < 2:
         return None # Not enough swings
         
+    # Check if peaks are within a tight 2-3% range of each other (The Resistance Zone)
+    peak_prices = closes_smoothed[peaks[-3:]] if len(peaks) >= 3 else closes_smoothed[peaks]
+    resistance_level = np.mean(peak_prices)
+    peak_variance = (np.max(peak_prices) - np.min(peak_prices)) / resistance_level
+
+    if peak_variance > 0.1: # If peaks vary by more than 10%, it's not a "flat top"
+        return None
+
     # Align peaks and troughs to calculate depths
     # We want Peak -> Trough sequence
     pullbacks = []
@@ -243,8 +260,8 @@ def check_criteria(data, ticker, rs_rating, use_fundamentals=False, use_volume_d
         valid_troughs = troughs[troughs > p]
         if len(valid_troughs) > 0:
             t = valid_troughs[0]
-            peak_val = closes[p]
-            trough_val = closes[t]
+            peak_val = closes_smoothed[p]
+            trough_val = closes_smoothed[t]
             depth = (peak_val - trough_val) / peak_val
             pullbacks.append(depth)
             
@@ -278,10 +295,14 @@ def check_criteria(data, ticker, rs_rating, use_fundamentals=False, use_volume_d
             if recent_vols[0] <= recent_vols[1]:
                 return None
 
+    # Final Tightness Guard (Must be <= 6%)
+    if recent_pullbacks[-1] > 0.06:
+        return None
+
     # --- 4. Volume Dry-Up and Breakout ---
     # Pivot Point is the peak of the final contraction
     final_peak_idx = peaks[-1]
-    pivot_point = closes[final_peak_idx]
+    pivot_point = closes_smoothed[final_peak_idx]
     
     # Entry Trigger: Today's close > Pivot
     if current_close <= pivot_point:
@@ -295,9 +316,9 @@ def check_criteria(data, ticker, rs_rating, use_fundamentals=False, use_volume_d
     # Find trough after final peak or use the most recent trough
     final_troughs = troughs[troughs > final_peak_idx]
     if len(final_troughs) > 0:
-        stop_loss = closes[final_troughs[0]] * 0.98 # 2% below the low
+        stop_loss = closes_smoothed[final_troughs[0]] * 0.98 # 2% below the low
     else:
-        stop_loss = closes[troughs[-1]] * 0.98 if len(troughs) > 0 else current_close * 0.92
+        stop_loss = closes_smoothed[troughs[-1]] * 0.98 if len(troughs) > 0 else current_close * 0.92
         
     # Target (Default to 25% similar to CANSLIM or fixed multiplier)
     target_price = pivot_point * 1.25
@@ -332,27 +353,40 @@ def render_pdf_standard_header(fig, title_text="Minervini VCP Report"):
     line = Line2D([0.08, 0.92], [0.91, 0.91], transform=fig.transFigure, color=BORDER_COLOR, linewidth=1.0, alpha=0.5)
     fig.add_artist(line)
 
-def create_pdf_title_page(pdf, timestamp):
+def create_pdf_title_page(pdf, timestamp, market_status):
     fig = plt.figure(figsize=(8.5, 11))
     plt.axis('off')
-    render_pdf_standard_header(fig, "Mark Minervini VCP Screener")
+    render_pdf_standard_header(fig, "Stock Analysis Report")
     PRIMARY_COLOR = '#1e293b'
     ACCENT_COLOR = '#2563eb'
     SECONDARY_COLOR = '#475569'
     
-    fig.text(0.5, 0.65, "Mark Minervini VCP", ha='center', va='center', fontsize=36, weight='bold', color=ACCENT_COLOR)
-    fig.text(0.5, 0.58, "Volatility Contraction Pattern Strategy", ha='center', va='center', fontsize=22, weight='bold', color=SECONDARY_COLOR)
-    fig.text(0.5, 0.52, f"Analysis Report: {timestamp}", ha='center', va='center', fontsize=14, color=SECONDARY_COLOR)
+    fig.text(0.5, 0.65, "Minervini VCP", ha='center', va='center', fontsize=36, weight='bold', color=ACCENT_COLOR)
+    fig.text(0.5, 0.58, "High-Growth Analysis Report", ha='center', va='center', fontsize=22, weight='bold', color=SECONDARY_COLOR)
+    fig.text(0.5, 0.52, f"Strategic Market Scan: {timestamp}", ha='center', va='center', fontsize=14, color=SECONDARY_COLOR)
     
-    fig.text(0.15, 0.35, "VCP Core Principles", fontsize=16, weight='bold', color=PRIMARY_COLOR)
+    status_color = '#16a34a' if "Bullish" in market_status else '#dc2626'
+    fig.text(0.5, 0.46, f"Market Condition: {market_status}", ha='center', va='center', fontsize=16, weight='bold', color=status_color)
+
+    fig.text(0.1, 0.35, "Strengths of Minervini VCP", fontsize=16, weight='bold', color=PRIMARY_COLOR)
     strengths = [
         "● Focus on Stage 2 Uptrends",
-        "● Visual pattern of price contraction",
-        "● Volume dry-up indicating supply exhaustion",
-        "● Breakout on high volume trigger"
+        "● Visual pattern of contraction",
+        "● Volume dry-up for supply exhaustion",
+        "● Breakout on high volume"
     ]
     for i, s in enumerate(strengths):
         fig.text(0.15, 0.31 - (i * 0.04), s, fontsize=12, color=SECONDARY_COLOR)
+
+    fig.text(0.6, 0.35, "Limitations", fontsize=16, weight='bold', color='#dc2626')
+    limitations = [
+        "● Prone to fail in choppy/bear markets",
+        "● Strict adherence to stop losses", 
+        "   (40–55% failure rate)",
+        "● Low-Volume Breakouts are tricky"
+    ]
+    for i, l in enumerate(limitations):
+        fig.text(0.6, 0.31 - (i * 0.04), l, fontsize=12, color=SECONDARY_COLOR)
 
     pdf.savefig(fig)
     plt.close(fig)
@@ -365,30 +399,85 @@ def render_pdf_documentation_page(pdf):
     SECONDARY_COLOR = '#475569'
     LEFT_MARGIN = 0.08
     
-    fig.text(LEFT_MARGIN, 0.86, "Mark Minervini VCP Rules", fontsize=20, weight='bold', color=PRIMARY_COLOR)
-    
     text = """
-Phase 1: Macro Trend (Template)
-- Price above 50, 150, 200 SMAs.
-- 50 SMA > 150 SMA > 200 SMA.
-- 200 SMA rising for at least 20 days.
-- Price at least 30% above 52W low.
-- Price within 25% of 52W high.
-- RS Rating >= 70 (Top 30% of market).
+1. Phase 1: The Macro Setup (Trend Template)
+- Before looking for a VCP, the script ensures the stock is in a confirmed Stage 2 Uptrend. It does this by calculating moving averages and 52-week highs/lows on the last 200+ days of data.
+- Moving Average Stacking: It checks that the current price is above the 50-day, 150-day, and 200-day Simple Moving Averages (SMAs). It also strictly enforces the order: SMA50 > SMA150 > SMA200.
+- Rising 200 SMA: It compares the current 200-day SMA to its value 20 days ago (prev_sma_200) to ensure the long-term trend is pointing upward.
+- Price Proximity Filters: The stock must be at least 30% above its 52-week low (MIN_PRICE_TO_LOW = 1.30) and within 25% of its 52-week high (MAX_PRICE_TO_HIGH = 0.75).
+Note: If the --use-fundamentals flag is passed, it also enforces SEPA fundamental criteria: Relative Strength (RS) rating >= 70, Quarterly EPS growth >= 20%, and Quarterly Sales growth >= 15%.
 
-Phase 2: Fundamental Filters
-- Quarterly EPS growth >= 20%.
-- Quarterly Sales growth >= 15%.
+2. Phase 2 & 3: Identifying the Contractions (The VCP Logic)
+if the macro setup is valid, the script analyzes the last 90 days of price action to find the actual Volatility Contraction Pattern.
+- Data Smoothing: Real stock data is noisy, which makes finding exact pivot highs and lows difficult programmatically. The script solves this by applying a 5-day Exponential Moving Average (df['Close'].ewm(span=5).mean()) to smooth the price curve.
+- Peak and Trough Detection: It uses scipy.signal.find_peaks with a minimum distance of 15 days (distance=15) on the smoothed data to identify local highs (peaks) and local lows (troughs).
+- Flat Top Resistance Guard: It takes the last 3 peaks and checks their variance (peak_variance). If the peaks vary by more than 10%, the script discards the stock because a valid VCP requires a relatively "flat top" resistance zone, not wild swings.
+- Calculating Pullback Depths: The script iterates through the identified peaks, finds the immediate subsequent trough, and calculates the percentage drop (depth) of that specific swing: (peak_val - trough_val) / peak_val.
+- Progressive Contraction Guard: This is the heart of Minervini's strategy. The script checks the last 2 or 3 pullbacks to ensure they are getting progressively smaller from left to right (e.g., recent_pullbacks[0] > recent_pullbacks[1] > recent_pullbacks[2]).
+- Final Tightness Guard: The very last pullback (the right side of the base) must be incredibly tight—specifically, less than or equal to a 6% drop (recent_pullbacks[-1] <= 0.06).
+Note: If the --use-volume-dryup flag is passed, it also checks that the average volume during these pullback periods is progressively decreasing, indicating a dry-up of selling pressure.
 
-Phase 3: Price Contraction (The Swings)
-- Progressive tightening of price swings.
-- Pullback depths must decrease from left to right.
+3. Phase 4: Breakout, Volume, and Risk Management
+Finally, if a valid contraction pattern exists, the script checks if a breakout is currently occurring.
+- The Pivot Point: The script defines the pivot_point as the price of the final (most recent) peak in the contraction.
+- Entry Trigger: The current close must be greater than the pivot_point.
+- Volume Confirmation: Professional buying must accompany the breakout. The script enforces that the current day's volume is at least 150% of the 50-day average volume (current_vol >= vol_sma_50 * 1.5).
 
-Phase 4: Breakout & Entry
-- Breakout day volume >= 150% of 50-day average.
-- Stop loss placed below low of final contraction.
+Risk Management Calculations:
+- Stop Loss: Placed 2% below the low of the final trough (closes_smoothed[final_troughs[0]] * 0.98).
+- Target: Automatically set to a 25% gain from the pivot point (pivot_point * 1.25).
+- Risk/Reward: Calculates the ratio of the expected reward against the risk to the stop loss.
+
+If all these conditions evaluate to True, the stock is flagged as a match. !!!.
 """
-    fig.text(LEFT_MARGIN, 0.80, text, ha='left', va='top', fontsize=11, color=SECONDARY_COLOR, linespacing=1.6)
+    import textwrap
+    lines = text.strip().split('\n')
+    y = 0.82
+    wrapper = textwrap.TextWrapper(width=95, break_long_words=False, replace_whitespace=False)
+    
+    for line in lines:
+        stripped_line = line.strip()
+        if stripped_line == "":
+            y -= 0.015
+            continue
+
+        is_header = stripped_line.startswith(("1.", "2.", "3.", "Risk Management", "If all these")) or stripped_line.endswith(":")
+        
+        if is_header:
+            wrapped = wrapper.wrap(stripped_line)
+            for w_line in wrapped:
+                if y < 0.06:
+                    pdf.savefig(fig)
+                    plt.clf()
+                    plt.axis('off')
+                    render_pdf_standard_header(fig, "VCP Methodology & Rules")
+                    fig.text(LEFT_MARGIN, 0.86, "Mark Minervini VCP Rules", fontsize=20, weight='bold', color=PRIMARY_COLOR)
+                    y = 0.82
+                fig.text(LEFT_MARGIN, y, w_line, fontsize=11, weight='bold', color=PRIMARY_COLOR)
+                y -= 0.028
+        else:
+            is_bullet = stripped_line.startswith("-")
+            content_to_wrap = stripped_line[1:].strip() if is_bullet else stripped_line
+            
+            wrapped = wrapper.wrap(content_to_wrap)
+            for i, w_line in enumerate(wrapped):
+                if y < 0.06:
+                    pdf.savefig(fig)
+                    plt.clf()
+                    plt.axis('off')
+                    render_pdf_standard_header(fig, "VCP Methodology & Rules")
+                    fig.text(LEFT_MARGIN, 0.86, "Mark Minervini VCP Rules", fontsize=20, weight='bold', color=PRIMARY_COLOR)
+                    y = 0.82
+                    
+                if is_bullet and i == 0:
+                    fig.text(LEFT_MARGIN, y, "●", fontsize=8, color='#2563eb', va='center')
+                    fig.text(LEFT_MARGIN + 0.02, y, w_line, fontsize=10, color=SECONDARY_COLOR)
+                elif is_bullet and i > 0:
+                    fig.text(LEFT_MARGIN + 0.02, y, w_line, fontsize=10, color=SECONDARY_COLOR)
+                else:
+                    fig.text(LEFT_MARGIN, y, w_line, fontsize=10, color=SECONDARY_COLOR)
+                y -= 0.022
+                
     pdf.savefig(fig)
     plt.close(fig)
 
@@ -481,7 +570,7 @@ def main():
     parser.add_argument('--limit', type=int, help="Limit number of stocks to scan")
     parser.add_argument('--sample', type=int, help="Run on a random sample")
     parser.add_argument('--refresh', action='store_true', help="Force refresh of cached data")
-    parser.add_argument('--use-fundamentals', action='store_true', default=False, help="Enable fundamental and RS filters")
+    parser.add_argument('--use-fundamentals', action='store_true', default=True, help="Enable fundamental and RS filters")
     parser.add_argument('--use-volume-dryup', action='store_true', default=False, help="Enable volume dry-up filter during contractions")
     args = parser.parse_args()
     
@@ -497,6 +586,23 @@ def main():
     rs_ratings = {}
     if args.use_fundamentals:
         rs_ratings = calculate_rs_ratings(tickers)
+    # Get Market Condition
+    market_status = "Unknown"
+    try:
+        with console.status("[blue]Fetching NIFTY 50 Market Condition...[/blue]"):
+            nifty = yf.Ticker('^NSEI')
+            nifty_df = nifty.history(period="6mo")
+            if len(nifty_df) >= 50:
+                nifty_df['SMA50'] = nifty_df['Close'].rolling(window=50).mean()
+                current_nifty = nifty_df['Close'].iloc[-1]
+                sma50_nifty = nifty_df['SMA50'].iloc[-1]
+                if current_nifty > sma50_nifty:
+                    market_status = f"Bullish (Nifty: {current_nifty:.2f} > 50SMA: {sma50_nifty:.2f})"
+                else:
+                    market_status = f"Bearish (Nifty: {current_nifty:.2f} < 50SMA: {sma50_nifty:.2f})"
+    except Exception as e:
+        console.print(f"[yellow]Error fetching market condition: {e}[/yellow]")
+
     results = []
     
     with console.status(f"[bold green]Scanning {len(tickers)} stocks against Minervini VCP...[/bold green]"):
@@ -511,7 +617,7 @@ def main():
     
     if results:
         with PdfPages(PDF_PATH) as pdf:
-            create_pdf_title_page(pdf, TIMESTAMP)
+            create_pdf_title_page(pdf, TIMESTAMP, market_status)
             render_pdf_documentation_page(pdf)
             
             df_results = pd.DataFrame([r[0] for r in results])

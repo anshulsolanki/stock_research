@@ -8,7 +8,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 BASE_DIR = os.path.dirname(__file__)
 SCREENER_RESULTS_DIR = os.path.join(BASE_DIR, 'screener_results')
 
-SCREENERS = ['CAMSLIM_breakouts', 'fw_breakouts', 'Minervini_breakouts']
+SCREENERS = ['CAMSLIM_breakouts', 'fw_breakouts', 'Minervini_breakouts', 'qullamaggie_breakouts', 'darvas_boxes']
 OUTPUT_EXCEL = os.path.join(SCREENER_RESULTS_DIR, 'consolidated_results.xlsx')
 OUTPUT_PDF = os.path.join(SCREENER_RESULTS_DIR, 'consolidated_results.pdf')
 
@@ -72,6 +72,10 @@ def create_dataframe(data):
                 col_name = 'fw'
             elif screener == 'Minervini_breakouts':
                 col_name = 'Minervini'
+            elif screener == 'qullamaggie_breakouts':
+                col_name = 'Qullamaggie'
+            elif screener == 'darvas_boxes':
+                col_name = 'Darvas'
             else:
                 col_name = screener
                 
@@ -80,7 +84,7 @@ def create_dataframe(data):
         
     df = pd.DataFrame(rows)
     # Ensure column order
-    columns = ['Date', 'CAMSLIM', 'fw', 'Minervini']
+    columns = ['Date', 'CAMSLIM', 'fw', 'Minervini', 'Qullamaggie', 'Darvas']
     # If any column is missing, add it with 'NA'
     for col in columns:
         if col not in df.columns:
@@ -90,16 +94,41 @@ def create_dataframe(data):
 def render_pdf_styled_table(pdf, df, title):
     if df.empty:
         return
-    rows_per_page = 22
-    num_pages = (len(df) // rows_per_page) + 1
-    for i in range(num_pages):
-        start_idx = i * rows_per_page
-        end_idx = min((i + 1) * rows_per_page, len(df))
-        chunk = df.iloc[start_idx:end_idx].copy()
+    # Calculate line count for each row and group into pages
+    pages = []
+    current_page = []
+    current_lines = 0
+    MAX_LINES_PER_PAGE = 43
+
+    for idx, row in df.iterrows():
+        h = 1
+        for col in df.columns:
+            if col == 'Date':
+                continue
+            val = str(row[col])
+            if val and val != 'NA':
+                lines = len(val.split(', '))
+                if lines > h:
+                    h = lines
+
+        if current_lines + h > MAX_LINES_PER_PAGE and current_page:
+            pages.append(pd.DataFrame(current_page))
+            current_page = []
+            current_lines = 0
+
+        current_page.append(row)
+        current_lines += h
+
+    if current_page:
+        pages.append(pd.DataFrame(current_page))
+
+    num_pages = len(pages)
+    for i, chunk in enumerate(pages):
         # Replace comma with newline for PDF rendering to avoid overlap
-        for col in ['CAMSLIM', 'fw', 'Minervini']:
-            if col in chunk.columns:
-                chunk[col] = chunk[col].astype(str).str.replace(', ', '\n')
+        for col in chunk.columns:
+            if col == 'Date':
+                continue
+            chunk[col] = chunk[col].astype(str).str.replace(', ', '\n')
         
         fig = plt.figure(figsize=(14, 8.5)) 
         ax = fig.add_axes([0, 0.05, 1, 0.85])
