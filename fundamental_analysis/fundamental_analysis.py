@@ -205,7 +205,11 @@ def calculate_growth_rate(values_dict, periods=['1Y', '3Y']):
             if past_value and past_value != 0:
                 years_diff = sorted_years[0] - sorted_years[idx]
                 if years_diff > 0:
-                    growth_rates['3Y'] = ((current_value / past_value) ** (1/years_diff) - 1) * 100
+                    if past_value < 0:
+                        # User requested alternative metric for negative start
+                        growth_rates['3Y'] = (((current_value - past_value) / abs(past_value)) / years_diff) * 100
+                    else:
+                        growth_rates['3Y'] = ((current_value / past_value) ** (1/years_diff) - 1) * 100
                     
 
     
@@ -453,13 +457,17 @@ def analyze_roe_growth_4y(ticker, data=None):
         net_income = income_stmt.loc['Net Income']
         equity = balance_sheet.loc['Stockholders Equity']
         
+        # Ensure sorted descending for shift(-1) to get PREVIOUS year
+        equity = equity.sort_index(ascending=False)
+        avg_equity = (equity + equity.shift(-1)) / 2
+        
         # Calculate ROE for each year
         roe_history = {}
         for date in net_income.index:
             year = date.year
-            if date in equity.index:
+            if date in avg_equity.index:
                 ni_val = float(net_income[date]) if pd.notna(net_income[date]) else None
-                eq_val = float(equity[date]) if pd.notna(equity[date]) else None
+                eq_val = float(avg_equity[date]) if pd.notna(avg_equity[date]) else None
                 
                 if ni_val is not None and eq_val is not None and eq_val != 0:
                     roe_history[year] = (ni_val / eq_val) * 100
@@ -732,9 +740,15 @@ def analyze_revenue_growth_6q(ticker, data=None):
             current = quarters_list[i]
             previous = quarters_list[i + 1]
             
-            if pd.notna(current) and pd.notna(previous) and previous != 0:
-                growth = ((current - previous) / abs(previous)) * 100
-                qoq_growth.append(growth)
+            # Verify date difference (~90 days)
+            date_current = quarters.index[i]
+            date_previous = quarters.index[i+1]
+            days_diff = abs((date_current - date_previous).days)
+            
+            if 60 <= days_diff <= 120:
+                if pd.notna(current) and pd.notna(previous) and previous != 0:
+                    growth = ((current - previous) / abs(previous)) * 100
+                    qoq_growth.append(growth)
         
         # Recent quarter growth
         recent_growth = qoq_growth[0] if qoq_growth else None
@@ -826,9 +840,15 @@ def analyze_profit_growth_6q(ticker, data=None):
             current = quarters_list[i]
             previous = quarters_list[i + 1]
             
-            if pd.notna(current) and pd.notna(previous) and previous != 0:
-                growth = ((current - previous) / abs(previous)) * 100
-                qoq_growth.append(growth)
+            # Verify date difference (~90 days)
+            date_current = quarters.index[i]
+            date_previous = quarters.index[i+1]
+            days_diff = abs((date_current - date_previous).days)
+            
+            if 60 <= days_diff <= 120:
+                if pd.notna(current) and pd.notna(previous) and previous != 0:
+                    growth = ((current - previous) / abs(previous)) * 100
+                    qoq_growth.append(growth)
         
         # Recent quarter growth
         recent_growth = qoq_growth[0] if qoq_growth else None
@@ -915,7 +935,7 @@ def analyze_roe_growth_6q(ticker, data=None):
                     roe = (ni_val / eq_val) * 100
                     quarter_label = f"{date.year}Q{(date.month-1)//3 + 1}"
                     roe_by_quarter[quarter_label] = round(roe, 2)
-                    roe_values.append(roe)
+                    roe_values.append((date, roe))
         
         if len(roe_values) < 2:
             return {'success': False, 'error': 'Insufficient quarterly ROE data'}
@@ -923,12 +943,15 @@ def analyze_roe_growth_6q(ticker, data=None):
         # Calculate QoQ growth rates
         qoq_growth = []
         for i in range(len(roe_values) - 1):
-            current = roe_values[i]
-            previous = roe_values[i + 1]
+            date_current, current = roe_values[i]
+            date_previous, previous = roe_values[i + 1]
             
-            if previous != 0:
-                growth = ((current - previous) / abs(previous)) * 100
-                qoq_growth.append(growth)
+            days_diff = abs((date_current - date_previous).days)
+            
+            if 60 <= days_diff <= 120:
+                if previous != 0:
+                    growth = ((current - previous) / abs(previous)) * 100
+                    qoq_growth.append(growth)
         
         # Recent quarter growth
         recent_growth = qoq_growth[0] if qoq_growth else None
@@ -1022,9 +1045,15 @@ def analyze_eps_growth_6q(ticker, data=None):
             current = quarters_list[i]
             previous = quarters_list[i + 1]
             
-            if pd.notna(current) and pd.notna(previous) and previous != 0:
-                growth = ((current - previous) / abs(previous)) * 100
-                qoq_growth.append(growth)
+            # Verify date difference (~90 days)
+            date_current = quarters.index[i]
+            date_previous = quarters.index[i+1]
+            days_diff = abs((date_current - date_previous).days)
+            
+            if 60 <= days_diff <= 120:
+                if pd.notna(current) and pd.notna(previous) and previous != 0:
+                    growth = ((current - previous) / abs(previous)) * 100
+                    qoq_growth.append(growth)
         
         # Recent quarter growth
         recent_growth = qoq_growth[0] if qoq_growth else None

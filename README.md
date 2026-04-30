@@ -22,6 +22,7 @@ This project provides a complete suite of technical and fundamental analysis too
 7.  **📉 Backtesting** - Strategy performance verification and futures rolling simulation
 8.  **🔌 Algo Trading** - Integration with Zerodha for order execution
 9.  **🌐 Web Interfaces** - Two Flask-based UIs (classic and modern dashboard)
+10. **🚀 Breakout Screeners** - Advanced screening tools like CANSLIM, VCP, and Bear Market filters
 
 ## 🏗️ System Architecture
 
@@ -35,6 +36,7 @@ graph TD
         Leading[Leading Indicators]
         Fund[Fundamental Analysis]
         Backtest[Backtesting Engine]
+        Screeners[Breakout Screeners]
     end
     
     Analysis --> WebUI[Web Interface]
@@ -187,6 +189,29 @@ Located in `leading_indicator_analysis/`
   - **Visualizations**: Overlay of signals on Price/Volume chart
 - **Use Case**: Identify localized tops/bottoms and smart money exits
 
+## 🚀 Advanced Breakout Screeners
+
+Located in `breakout_screeners/`
+
+#### 1. CANSLIM Screener
+- **File**: [`canslim_screener.py`](./breakout_screeners/canslim_screener.py)
+- **Type**: High-Growth Fundamental + Technical Screener
+- **Features**: Implements William O'Neil's CANSLIM methodology (EPS & Sales growth, ROE, RS Rating, SMA trend alignment, and institutional ownership).
+
+#### 2. Mark Minervini VCP Screener
+- **File**: [`mark_minervini_vcp_screener.py`](./breakout_screeners/mark_minervini_vcp_screener.py)
+- **Type**: Volatility Contraction Pattern Detector
+- **Features**: Implements Minervini's macro Trend Template and VCP contraction swings.
+
+#### 3. Financial-Wisdom Breakout Screener
+- **File**: [`fw_breakout_screener.py`](./breakout_screeners/fw_breakout_screener.py)
+- **Type**: Weekly Range Breakout Strategy
+- **Features**: Weekly chart technical breakout precision with CANSLIM quality fundamental overlays. Middle-Third Risk Management logic incorporated.
+
+#### 4. Bear Market Screeners
+- **Directory**: [`bear_market_screener/`](./breakout_screeners/bear_market_screener/)
+- **Type**: Defensive & Deep Value Market Scanning
+- **Features**: Technical, fundamental, and combined screening strategies to identify resilient stocks during systematic market downturns. Includes strategies inspired by famous traders like Paul Tudor Jones, David Dreman, and Michael Burry.
 
 ## 🏢 Fundamental Analysis
 
@@ -367,6 +392,11 @@ stock_research/
 │   ├── batch_analysis.py              # Multi-stock batch processing
 │   ├── sector_analysis.py             # Sector-wide relative strength
 │   └── stock_in_sector_analysis.py    # Stock vs Sector comparison
+├── breakout_screeners/                # Advanced market screening tools
+│   ├── canslim_screener.py            # William O'Neil's CANSLIM
+│   ├── fw_breakout_screener.py        # Financial-Wisdom Breakouts
+│   ├── mark_minervini_vcp_screener.py # Minervini VCP Pattern
+│   └── bear_market_screener/          # Defensive & Bear Market Screeners
 ├── backtesting/                       # Strategy performance testing
 │   ├── golden_cross_backtest.py       # Golden Cross with Futures rolling
 │   └── plot_ema.py                    # Visualization helper
@@ -408,5 +438,5 @@ For personal use only.
 ---
 Made with ❤️ for stock market enthusiasts and technical analysts
 
-**Last Updated**: February 17, 2026  
-**Version**: 2.6
+**Last Updated**: March 28, 2026  
+**Version**: 2.7
