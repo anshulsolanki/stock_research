@@ -378,6 +378,10 @@ def check_criteria(data, ticker, rs_rating, use_fundamentals=False, use_volume_d
     # Target (25% gain from pivot)
     target_price = pivot_point * 1.25
     
+    # Filter out if already reached or exceeded target
+    if current_close >= target_price:
+        return None
+        
     # Risk/Reward
     risk = current_close - stop_loss
     reward = target_price - current_close
