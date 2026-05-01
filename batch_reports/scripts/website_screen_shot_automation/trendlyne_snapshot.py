@@ -124,7 +124,7 @@ def _attempt_automated_login(page):
         return False
 
 
-def _manual_login_fallback():
+def _manual_login_fallback(p):
     """
     Opens a visible browser for the user to log in manually once.
     The session is saved in the persistent context for future headless runs.
@@ -136,31 +136,30 @@ def _manual_login_fallback():
     print("Future runs will reuse this saved session.")
     print("=" * 60 + "\n")
 
-    with sync_playwright() as p:
-        context = p.chromium.launch_persistent_context(
-            USER_DATA_DIR,
-            headless=False,
-            channel="chrome",
-            viewport={'width': 1920, 'height': 1080},
-            user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        )
-        page = context.new_page()
-        page.goto("https://trendlyne.com/")
+    context = p.chromium.launch_persistent_context(
+        USER_DATA_DIR,
+        headless=False,
+        channel="chrome",
+        viewport={'width': 1920, 'height': 1080},
+        user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    )
+    page = context.new_page()
+    page.goto("https://trendlyne.com/")
 
-        # Wait for the user to log in and the profile dropdown to appear
-        print("Waiting for you to log in... (will auto-detect when done)")
-        try:
-            # Give the user up to 5 minutes to manually log in
-            page.wait_for_selector(".tl-profile-dropdown", timeout=300000)
-            print("Manual login detected! Saving session...")
-            time.sleep(2)  # Let cookies settle
-        except Exception:
-            print("Timed out waiting for manual login. Continuing without login.")
+    # Wait for the user to log in and the profile dropdown to appear
+    print("Waiting for you to log in... (will auto-detect when done)")
+    try:
+        # Give the user up to 5 minutes to manually log in
+        page.wait_for_selector(".tl-profile-dropdown", timeout=300000)
+        print("Manual login detected! Saving session...")
+        time.sleep(2)  # Let cookies settle
+    except Exception:
+        print("Timed out waiting for manual login. Continuing without login.")
 
-        context.close()
+    context.close()
 
 
-def login_if_needed(page, allow_manual_fallback=True):
+def login_if_needed(page, p, allow_manual_fallback=True):
     """
     Checks if the user is logged in. If not, performs the login action.
     Uses human-like typing to avoid reCAPTCHA blocks.
@@ -180,7 +179,7 @@ def login_if_needed(page, allow_manual_fallback=True):
 
         # Automated login failed — try manual fallback
         if allow_manual_fallback:
-            _manual_login_fallback()
+            _manual_login_fallback(p)
             # After manual login, reload the page to pick up the session
             page.reload()
             page.wait_for_load_state("networkidle")
@@ -236,7 +235,7 @@ def get_trendlyne_snapshots(stock_name="Dabur", output_dir=".", headless=True, s
             page.goto("https://trendlyne.com/")
             
             # Perform login check
-            login_if_needed(page)
+            login_if_needed(page, p)
             
             # Wait for search bar
             print(f"Searching for '{stock_name}'...")
