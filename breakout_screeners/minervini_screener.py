@@ -122,7 +122,7 @@ def load_tickers(limit=None):
         console.print(f"[red]Error: {JSON_PATH} not found.[/red]")
         return []
 
-def calculate_rs_ratings(tickers, end_date=None):
+def calculate_rs_ratings(tickers, end_date=None, preloaded_data=None):
     """Calculate IBD-style weighted Relative Strength rank across our universe.
     
     Uses a weighted formula: 40% most recent quarter, 20% each for prior 3 quarters.
@@ -131,27 +131,33 @@ def calculate_rs_ratings(tickers, end_date=None):
     returns = {}
     with console.status(f"[blue]Calculating Relative Strength rankings for {len(tickers)} stocks...[/blue]"):
         for ticker in tickers:
-            cache_path = os.path.join(CACHE_DIR, f"{ticker}_1d.csv")
-            if os.path.exists(cache_path):
-                df = pd.read_csv(cache_path, index_col=0, parse_dates=True)
-                # Truncate to end_date if specified
-                if end_date is not None:
-                    end_ts = pd.Timestamp(end_date)
-                    if df.index.tz is not None:
-                        end_ts = end_ts.tz_localize(df.index.tz)
-                    df = df[df.index <= end_ts]
-                if len(df) > 252:
-                    try:
-                        close = df['Close']
-                        # IBD-style weighted RS: 40% Q1 (recent), 20% each for Q2-Q4
-                        q1 = (close.iloc[-1] - close.iloc[-63]) / close.iloc[-63]
-                        q2 = (close.iloc[-63] - close.iloc[-126]) / close.iloc[-126]
-                        q3 = (close.iloc[-126] - close.iloc[-189]) / close.iloc[-189]
-                        q4 = (close.iloc[-189] - close.iloc[-252]) / close.iloc[-252]
-                        weighted_return = 0.4 * q1 + 0.2 * q2 + 0.2 * q3 + 0.2 * q4
-                        returns[ticker] = weighted_return
-                    except (IndexError, ZeroDivisionError):
-                        pass
+            if preloaded_data and ticker in preloaded_data:
+                df = preloaded_data[ticker]['history'].copy()
+            else:
+                cache_path = os.path.join(CACHE_DIR, f"{ticker}_1d.csv")
+                if os.path.exists(cache_path):
+                    df = pd.read_csv(cache_path, index_col=0, parse_dates=True)
+                else:
+                    continue
+            
+            # Truncate to end_date if specified
+            if end_date is not None:
+                end_ts = pd.Timestamp(end_date)
+                if df.index.tz is not None:
+                    end_ts = end_ts.tz_localize(df.index.tz)
+                df = df[df.index <= end_ts]
+            if len(df) > 252:
+                try:
+                    close = df['Close']
+                    # IBD-style weighted RS: 40% Q1 (recent), 20% each for Q2-Q4
+                    q1 = (close.iloc[-1] - close.iloc[-63]) / close.iloc[-63]
+                    q2 = (close.iloc[-63] - close.iloc[-126]) / close.iloc[-126]
+                    q3 = (close.iloc[-126] - close.iloc[-189]) / close.iloc[-189]
+                    q4 = (close.iloc[-189] - close.iloc[-252]) / close.iloc[-252]
+                    weighted_return = 0.4 * q1 + 0.2 * q2 + 0.2 * q3 + 0.2 * q4
+                    returns[ticker] = weighted_return
+                except (IndexError, ZeroDivisionError):
+                    pass
     
     if not returns:
         return {}
@@ -568,7 +574,7 @@ def generate_chart(df, ticker, result, pdf=None, end_date=None):
         end_ts = pd.Timestamp(end_date)
         if df.index.tz is not None:
             end_ts = end_ts.tz_localize(df.index.tz)
-        df = df[df.index <= end_ts]
+        df = df[df.index <= end_ts].copy()
     # Ensure SMA columns exist (they may be missing if check_criteria worked on a copy)
     if 'SMA50' not in df.columns:
         df['SMA50'] = df['Close'].rolling(window=50).mean()
