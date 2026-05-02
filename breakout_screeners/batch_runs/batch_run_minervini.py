@@ -62,6 +62,7 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
 import shutil
+import threading
 
 # Ensure parent scripts are importable
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -70,6 +71,8 @@ sys.path.append(PARENT_DIR)
 
 import minervini_screener
 from matplotlib.backends.backend_pdf import PdfPages
+
+_mpl_lock = threading.Lock()
 
 def run_batch():
     # --- 1. Argument Parsing ---
@@ -126,6 +129,12 @@ def run_batch():
 
     def process_date(dt):
         date_str = dt.strftime('%Y-%m-%d')
+
+        # Resume: skip if PDF already exists in the final output folder
+        existing_pdf = os.path.join(FINAL_BATCH_DIR, f"minervini_Screener_Results_{date_str}.pdf")
+        if os.path.exists(existing_pdf):
+            return date_str, -1, None, None, []
+
         rs_ratings = {}
         if args.use_fundamentals:
             rs_ratings = minervini_screener.calculate_rs_ratings(tickers, end_date=date_str, preloaded_data=preloaded_data)
@@ -140,43 +149,51 @@ def run_batch():
                     results.append((match, data))
         
         if results:
-            TIMESTAMP = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            import time
-            time.sleep(1.1) 
-            
-            OUTPUT_DIR = os.path.join(minervini_screener.BASE_DIR, 'screener_results', 'minervini_breakouts', TIMESTAMP)
+            OUTPUT_DIR = os.path.join(minervini_screener.BASE_DIR, 'screener_results', 'minervini_breakouts', f"run_{date_str}")
             os.makedirs(OUTPUT_DIR, exist_ok=True)
             PDF_PATH = os.path.join(OUTPUT_DIR, f"minervini_Screener_Results_{date_str}.pdf")
             
-            with PdfPages(PDF_PATH) as pdf:
-                minervini_screener.create_pdf_title_page(pdf, date_str, "Unknown")
-                minervini_screener.render_pdf_documentation_page(pdf)
-                df_results = pd.DataFrame([r[0] for r in results])
-                minervini_screener.render_pdf_styled_table(pdf, df_results, f"Minervini Results {date_str}")
-                
-                for match, data in results:
-                    minervini_screener.generate_chart(data['history'], match['Ticker'], match, pdf=pdf, end_date=date_str)
+            with _mpl_lock:
+                with PdfPages(PDF_PATH) as pdf:
+                    minervini_screener.create_pdf_title_page(pdf, date_str, "Unknown")
+                    minervini_screener.render_pdf_documentation_page(pdf)
+                    df_results = pd.DataFrame([r[0] for r in results])
+                    minervini_screener.render_pdf_styled_table(pdf, df_results, f"Minervini Results {date_str}")
                     
-                df_results.to_csv(os.path.join(OUTPUT_DIR, 'results.csv'), index=False)
+                    for match, data in results:
+                        minervini_screener.generate_chart(data['history'], match['Ticker'], match, pdf=pdf, end_date=date_str)
+                    
+                    df_results.to_csv(os.path.join(OUTPUT_DIR, 'results.csv'), index=False)
             return date_str, len(results), PDF_PATH, OUTPUT_DIR, [r[0] for r in results]
         return date_str, 0, None, None, []
 
     pdf_moves = []
     dirs_to_remove = set()
     all_recommendations = []
+    failed_dates = []
 
     # --- 3. Parallel Execution Loop ---
+    completed = 0
+    total = len(dates)
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = {executor.submit(process_date, dt): dt for dt in dates}
         for future in as_completed(futures):
-            date_str, match_count, pdf_path, output_dir, daily_matches = future.result()
-            if match_count > 0:
-                print(f"[SUCCESS] {date_str} -> Found {match_count} matches. PDF: {os.path.basename(pdf_path)}")
-                pdf_moves.append((pdf_path, os.path.join(FINAL_BATCH_DIR, os.path.basename(pdf_path))))
-                dirs_to_remove.add(output_dir)
-                all_recommendations.extend(daily_matches)
-            else:
-                print(f"[SUCCESS] {date_str} -> 0 matches.")
+            completed += 1
+            try:
+                date_str, match_count, pdf_path, output_dir, daily_matches = future.result()
+                if match_count == -1:
+                    print(f"[{completed}/{total}] {date_str} -> Skipped (already processed).")
+                elif match_count > 0:
+                    print(f"[{completed}/{total}] {date_str} -> Found {match_count} matches.")
+                    pdf_moves.append((pdf_path, os.path.join(FINAL_BATCH_DIR, os.path.basename(pdf_path))))
+                    dirs_to_remove.add(output_dir)
+                    all_recommendations.extend(daily_matches)
+                else:
+                    print(f"[{completed}/{total}] {date_str} -> 0 matches.")
+            except Exception as e:
+                failed_date = futures[future].strftime('%Y-%m-%d')
+                print(f"[{completed}/{total}] {failed_date} -> FAILED: {e}")
+                failed_dates.append(failed_date)
 
     # --- 4. File & Directory Consolidation ---
     if pdf_moves:
@@ -207,6 +224,8 @@ def run_batch():
     print(f"\n============================================================")
     print(f"In-Memory Batch Run Completed")
     print(f"Final Output Folder: {FINAL_BATCH_DIR}")
+    if failed_dates:
+        print(f"Failed Dates ({len(failed_dates)}): {', '.join(sorted(failed_dates))}")
     print(f"============================================================")
 
 if __name__ == "__main__":

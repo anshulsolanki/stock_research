@@ -78,25 +78,21 @@ def evaluate_performance():
     df_recs['ParsedDate'] = pd.to_datetime(df_recs['Date'])
     df_recs = df_recs.sort_values(by='ParsedDate')
 
-    filtered_recs = []
-    last_buy_dates = {}
+    def _apply_cooldown(group, days=60):
+        """Keep first entry, then only entries >N days after the last kept entry."""
+        group = group.sort_values('ParsedDate')
+        kept = [True]
+        last_date = group['ParsedDate'].iloc[0]
+        for date in group['ParsedDate'].iloc[1:]:
+            if (date - last_date).days > days:
+                kept.append(True)
+                last_date = date
+            else:
+                kept.append(False)
+        return group[kept]
 
-    for index, row in df_recs.iterrows():
-        ticker = row['Ticker']
-        curr_date = row['ParsedDate']
-
-        if ticker not in last_buy_dates:
-            last_buy_dates[ticker] = curr_date
-            filtered_recs.append(row)
-        else:
-            days_diff = (curr_date - last_buy_dates[ticker]).days
-            if days_diff > 60:
-                last_buy_dates[ticker] = curr_date
-                filtered_recs.append(row)
-
-    df_recs = pd.DataFrame(filtered_recs)
-    if not df_recs.empty:
-        df_recs = df_recs.drop(columns=['ParsedDate'])
+    df_recs = df_recs.groupby('Ticker', group_keys=False).apply(_apply_cooldown)
+    df_recs = df_recs.drop(columns=['ParsedDate'])
 
     print(f"Filtered down to {len(df_recs)} unique 60-day interval recommendations. Starting evaluation...")
 
@@ -106,7 +102,7 @@ def evaluate_performance():
     for index, row in df_recs.iterrows():
         ticker = row['Ticker']
         rec_date_str = row['Date']
-        entry_close = float(row['Close'])
+        rec_close = float(row['Close'])
         target_price = float(row['Target'])
         stop_loss = float(row['Stop_Loss'])
         pivot_price = float(row['Pivot'])
@@ -138,12 +134,18 @@ def evaluate_performance():
         # Slice forward 30 trading days (excluding entry day itself)
         df_forward = df_hist.iloc[idx + 1 : idx + 31]
 
+        # Entry price is next day's open (realistic: screener runs after market close)
+        entry_price = float(df_forward['Open'].iloc[0])
+
+        # Breakout gap: how much the stock gapped from rec-day close to actual entry
+        gap_pct = round(((entry_price - rec_close) / rec_close) * 100, 2)
+
         # 1. Horizon Performance Calculations
         perf_map = {}
         for days in [1, 3, 5, 10, 15, 30]:
             if len(df_forward) >= days:
                 fwd_close = float(df_forward['Close'].iloc[days - 1])
-                perf_map[f'Perf_{days}d'] = round(((fwd_close - entry_close) / entry_close) * 100, 2)
+                perf_map[f'Perf_{days}d'] = round(((fwd_close - entry_price) / entry_price) * 100, 2)
             else:
                 perf_map[f'Perf_{days}d'] = np.nan
 
@@ -172,10 +174,12 @@ def evaluate_performance():
 
         # 4. Max Drawdown
         min_low = np.min(forward_lows)
-        max_drawdown = round(((min_low - entry_close) / entry_close) * 100, 2)
+        max_drawdown = round(((min_low - entry_price) / entry_price) * 100, 2)
 
         row_ext = row.to_dict()
         row_ext.update({
+            'Entry_Price': entry_price,
+            'Gap_Pct': gap_pct,
             'Perf_1d': perf_map['Perf_1d'],
             'Perf_3d': perf_map['Perf_3d'],
             'Perf_5d': perf_map['Perf_5d'],
@@ -197,25 +201,75 @@ def evaluate_performance():
     print(f"\n[SUCCESS] Evaluated results saved to: {output_path}")
 
     # --- 4. Statistical Summary ---
+    perf_30d_valid = df_evaluated['Perf_30d'].dropna()
     valid_results = df_evaluated[df_evaluated['Trade_Result'].isin(['Win', 'Loss'])]
+
+    print("\n" + "=" * 50)
+    print("  Performance Evaluation Summary")
+    print("=" * 50)
+
     if not valid_results.empty:
         total = len(valid_results)
         wins = len(valid_results[valid_results['Trade_Result'] == 'Win'])
         losses = len(valid_results[valid_results['Trade_Result'] == 'Loss'])
         win_rate = (wins / total) * 100
+        loss_rate = (losses / total) * 100
 
-        perf_30d_valid = df_evaluated['Perf_30d'].dropna()
-        avg_30d = np.mean(perf_30d_valid) if not perf_30d_valid.empty else 0
+        # Average win / loss percentages (using 30-day returns)
+        win_returns = valid_results.loc[valid_results['Trade_Result'] == 'Win', 'Perf_30d'].dropna()
+        loss_returns = valid_results.loc[valid_results['Trade_Result'] == 'Loss', 'Perf_30d'].dropna()
+        avg_win = float(np.mean(win_returns)) if not win_returns.empty else 0
+        avg_loss = float(np.mean(loss_returns)) if not loss_returns.empty else 0
 
-        print("\n" + "=" * 40)
-        print("Performance Evaluation Summary")
-        print("=" * 40)
-        print(f"Total Closed Trades: {total}")
-        print(f"Wins: {wins} | Losses: {losses}")
-        print(f"Win Rate: {win_rate:.2f}%")
-        if not perf_30d_valid.empty:
-            print(f"Average 30-day Return: {avg_30d:.2f}%")
-        print("=" * 40 + "\n")
+        # Profit Factor: gross wins / abs(gross losses)
+        gross_wins = float(win_returns.sum()) if not win_returns.empty else 0
+        gross_losses = float(loss_returns.sum()) if not loss_returns.empty else 0
+        profit_factor = abs(gross_wins / gross_losses) if gross_losses != 0 else np.inf
+
+        # Expectancy: (win_rate × avg_win) + (loss_rate × avg_loss)
+        expectancy = (win_rate / 100 * avg_win) + (loss_rate / 100 * avg_loss)
+
+        # Max consecutive losses
+        results_seq = valid_results['Trade_Result'].values
+        max_consec_losses = 0
+        current_streak = 0
+        for r in results_seq:
+            if r == 'Loss':
+                current_streak += 1
+                max_consec_losses = max(max_consec_losses, current_streak)
+            else:
+                current_streak = 0
+
+        print(f"  Total Closed Trades : {total}")
+        print(f"  Wins / Losses       : {wins} / {losses}")
+        print(f"  Win Rate            : {win_rate:.2f}%")
+        print("-" * 50)
+        print(f"  Avg Win (30d)       : {avg_win:+.2f}%")
+        print(f"  Avg Loss (30d)      : {avg_loss:+.2f}%")
+        print(f"  Profit Factor       : {profit_factor:.2f}")
+        print(f"  Expectancy / Trade  : {expectancy:+.2f}%")
+        print("-" * 50)
+        print(f"  Max Consec. Losses  : {max_consec_losses}")
+
+    if not perf_30d_valid.empty:
+        print("-" * 50)
+        print(f"  Avg 30-day Return   : {np.mean(perf_30d_valid):+.2f}%")
+        print(f"  Median 30-day Return: {np.median(perf_30d_valid):+.2f}%")
+
+    # Breakout gap statistics
+    if 'Gap_Pct' in df_evaluated.columns:
+        gap_data = df_evaluated['Gap_Pct'].dropna()
+        if not gap_data.empty:
+            print("-" * 50)
+            print(f"  Avg Breakout Gap    : {np.mean(gap_data):+.2f}%")
+            print(f"  Median Breakout Gap : {np.median(gap_data):+.2f}%")
+
+    open_trades = len(df_evaluated[df_evaluated['Trade_Result'] == 'Open'])
+    if open_trades > 0:
+        print("-" * 50)
+        print(f"  Open Trades (no hit): {open_trades}")
+
+    print("=" * 50 + "\n")
 
 if __name__ == "__main__":
     evaluate_performance()
