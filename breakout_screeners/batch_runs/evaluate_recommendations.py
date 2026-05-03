@@ -47,6 +47,13 @@ Backtest Constraints & Logic:
 Usage:
 ------
 python evaluate_recommendations.py --csv-path path/to/consolidated_results.csv
+
+# Default: 30-day evaluation (same as before)
+python evaluate_recommendations.py --csv-path path/to/consolidated_results.csv
+
+# Extended: 60-day evaluation
+python evaluate_recommendations.py --csv-path path/to/consolidated_results.csv --forward-days 60
+
 """
 
 import argparse
@@ -63,6 +70,7 @@ def evaluate_performance():
     # --- 1. Argument Parsing ---
     parser = argparse.ArgumentParser(description="VCP Recommendation Performance Evaluator")
     parser.add_argument('--csv-path', type=str, required=True, help="Path to consolidated_results.csv")
+    parser.add_argument('--forward-days', type=int, default=30, choices=[30, 60], help="Forward evaluation window in trading days (default: 30)")
     args = parser.parse_args()
 
     if not os.path.exists(args.csv_path):
@@ -91,8 +99,12 @@ def evaluate_performance():
                 kept.append(False)
         return group[kept]
 
-    df_recs = df_recs.groupby('Ticker', group_keys=False).apply(_apply_cooldown)
-    df_recs = df_recs.drop(columns=['ParsedDate'])
+    filtered_parts = []
+    for _, group in df_recs.groupby('Ticker'):
+        filtered_parts.append(_apply_cooldown(group))
+    df_recs = pd.concat(filtered_parts, ignore_index=True) if filtered_parts else pd.DataFrame()
+    if 'ParsedDate' in df_recs.columns:
+        df_recs = df_recs.drop(columns=['ParsedDate'])
 
     print(f"Filtered down to {len(df_recs)} unique 60-day interval recommendations. Starting evaluation...")
 
@@ -127,12 +139,12 @@ def evaluate_performance():
 
         idx = df_hist.index.get_loc(rec_date)
         
-        # Skip recommendation if we do not have at least 30 days of forward data
-        if len(df_hist) - idx - 1 < 30:
+        # Skip recommendation if we do not have enough forward data
+        if len(df_hist) - idx - 1 < args.forward_days:
             continue
             
-        # Slice forward 30 trading days (excluding entry day itself)
-        df_forward = df_hist.iloc[idx + 1 : idx + 31]
+        # Slice forward N trading days (excluding entry day itself)
+        df_forward = df_hist.iloc[idx + 1 : idx + 1 + args.forward_days]
 
         # Entry price is next day's open (realistic: screener runs after market close)
         entry_price = float(df_forward['Open'].iloc[0])
@@ -142,7 +154,10 @@ def evaluate_performance():
 
         # 1. Horizon Performance Calculations
         perf_map = {}
-        for days in [1, 3, 5, 10, 15, 30]:
+        horizons = [1, 3, 5, 10, 15, 30]
+        if args.forward_days >= 60:
+            horizons.append(60)
+        for days in horizons:
             if len(df_forward) >= days:
                 fwd_close = float(df_forward['Close'].iloc[days - 1])
                 perf_map[f'Perf_{days}d'] = round(((fwd_close - entry_price) / entry_price) * 100, 2)
@@ -190,8 +205,10 @@ def evaluate_performance():
             'Price_Below_Pivot': price_below_pivot,
             'Lowest_Price_Below_Pivot': lowest_below_pivot,
             'Trade_Result': trade_result,
-            'Max_Drawdown_30d': max_drawdown
+            'Max_Drawdown': max_drawdown
         })
+        if args.forward_days >= 60:
+            row_ext['Perf_60d'] = perf_map['Perf_60d']
         evaluated_rows.append(row_ext)
 
     df_evaluated = pd.DataFrame(evaluated_rows)
@@ -255,6 +272,13 @@ def evaluate_performance():
         print("-" * 50)
         print(f"  Avg 30-day Return   : {np.mean(perf_30d_valid):+.2f}%")
         print(f"  Median 30-day Return: {np.median(perf_30d_valid):+.2f}%")
+
+    if 'Perf_60d' in df_evaluated.columns:
+        perf_60d_valid = df_evaluated['Perf_60d'].dropna()
+        if not perf_60d_valid.empty:
+            print("-" * 50)
+            print(f"  Avg 60-day Return   : {np.mean(perf_60d_valid):+.2f}%")
+            print(f"  Median 60-day Return: {np.median(perf_60d_valid):+.2f}%")
 
     # Breakout gap statistics
     if 'Gap_Pct' in df_evaluated.columns:
