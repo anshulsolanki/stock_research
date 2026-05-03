@@ -69,7 +69,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.append(PARENT_DIR)
 
-import minervini_screener
+import minervini_st_breakouts as minervini_screener
 from matplotlib.backends.backend_pdf import PdfPages
 
 _mpl_lock = threading.Lock()

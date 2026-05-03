@@ -47,7 +47,7 @@ If all these conditions evaluate to True, the stock is flagged as a match, its m
 
 Usage:
 ------
-python minervini_screener.py [--limit N] [--sample N] [--refresh] [--use-fundamentals] [--use-volume-dryup]
+python minervini_st_breakouts.py [--limit N] [--sample N] [--refresh] [--use-fundamentals] [--use-volume-dryup] [--end-date DD-MM-YYYY]
 """
 
 # Imports
@@ -643,15 +643,18 @@ def main():
     parser.add_argument('--refresh', action='store_true', help="Force refresh of cached data")
     parser.add_argument('--use-fundamentals', action='store_true', default=True, help="Enable fundamental and RS filters")
     parser.add_argument('--use-volume-dryup', action='store_true', default=False, help="Enable volume dry-up filter during contractions")
-    parser.add_argument('--end-date', type=str, default=None, help="Run screener up to this date (YYYY-MM-DD). Uses all available data if not set.")
+    parser.add_argument('--end-date', type=str, default=None, help="Run screener up to this date (DD-MM-YYYY). Uses all available data if not set.")
     args = parser.parse_args()
     
+    # If date is provided as DD-MM-YYYY, parse it into YYYY-MM-DD internally so pandas handles it
+    parsed_end_date = None
     if args.end_date:
         try:
-            pd.Timestamp(args.end_date)
-            console.print(f"[cyan]Running screener with end date: {args.end_date}[/cyan]")
+            dt = datetime.strptime(args.end_date, "%d-%m-%Y")
+            parsed_end_date = dt.strftime("%Y-%m-%d")
+            console.print(f"[cyan]Running screener with end date: {args.end_date} (parsed as {parsed_end_date})[/cyan]")
         except ValueError:
-            console.print(f"[red]Invalid date format: {args.end_date}. Use YYYY-MM-DD.[/red]")
+            console.print(f"[red]Invalid date format: {args.end_date}. Use DD-MM-YYYY.[/red]")
             return
     
     setup_directories()
@@ -665,7 +668,7 @@ def main():
         
     rs_ratings = {}
     if args.use_fundamentals:
-        rs_ratings = calculate_rs_ratings(tickers, end_date=args.end_date)
+        rs_ratings = calculate_rs_ratings(tickers, end_date=parsed_end_date)
     # Get Market Condition
     market_status = "Unknown"
     try:
@@ -673,8 +676,8 @@ def main():
             nifty = yf.Ticker('^NSEI')
             nifty_df = nifty.history(period="2y")
             # Truncate to end_date if specified
-            if args.end_date:
-                end_ts = pd.Timestamp(args.end_date)
+            if parsed_end_date:
+                end_ts = pd.Timestamp(parsed_end_date)
                 if nifty_df.index.tz is not None:
                     end_ts = end_ts.tz_localize(nifty_df.index.tz)
                 nifty_df = nifty_df[nifty_df.index <= end_ts]
@@ -696,7 +699,7 @@ def main():
         data = fetch_data(ticker, refresh=args.refresh)
         if data:
             rs = rs_ratings.get(ticker, 0) if args.use_fundamentals else 0
-            match = check_criteria(data, ticker, rs, use_fundamentals=args.use_fundamentals, use_volume_dryup=args.use_volume_dryup, end_date=args.end_date)
+            match = check_criteria(data, ticker, rs, use_fundamentals=args.use_fundamentals, use_volume_dryup=args.use_volume_dryup, end_date=parsed_end_date)
             if match:
                 return (match, data)
         return None
@@ -725,7 +728,7 @@ def main():
             render_pdf_styled_table(pdf, df_results, "Minervini VCP Screener Results")
             
             for match, data in results:
-                generate_chart(data['history'], match['Ticker'], match, pdf=pdf, end_date=args.end_date)
+                generate_chart(data['history'], match['Ticker'], match, pdf=pdf, end_date=parsed_end_date)
                 
             df_results.to_csv(os.path.join(OUTPUT_DIR, 'results.csv'), index=False)
             console.print(f"\n[bold]Results saved to {OUTPUT_DIR}/results.csv[/bold]")

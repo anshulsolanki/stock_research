@@ -14,39 +14,43 @@ echo "============================================================"
 date
 
 # 1. Data refresh
-echo -e "\n[1/9] Running Data Refresh..."
+echo -e "\n[1/11] Running Data Refresh..."
 $PYTHON_EXEC "$BASE_DIR/download_data.py"
 
 # 2. Bear market screeners
-echo -e "\n[2/9] Running Bear Market Screeners..."
+echo -e "\n[2/11] Running Bear Market Screeners..."
 $PYTHON_EXEC "$BASE_DIR/bear_market_screener/bear_market_combined_screener.py"
 
 # 3. CANSLIM screener
-echo -e "\n[3/9] Running CANSLIM Screener..."
+echo -e "\n[3/11] Running CANSLIM Screener..."
 $PYTHON_EXEC "$BASE_DIR/canslim_screener.py"
 
 # 4. Financial wisdom screener
-echo -e "\n[4/9] Running Financial Wisdom Screener..."
+echo -e "\n[4/11] Running Financial Wisdom Screener..."
 $PYTHON_EXEC "$BASE_DIR/fw_breakout_screener.py"
 
-# 5. Minervini screener (Default)
-echo -e "\n[5/9] Running Minervini Screener (Default)..."
-$PYTHON_EXEC "$BASE_DIR/minervini_screener.py" --use-fundamentals
+# 5. Minervini ST screener (Default)
+echo -e "\n[5/11] Running Minervini ST Screener (Default)..."
+$PYTHON_EXEC "$BASE_DIR/minervini_st_breakouts.py" --use-fundamentals
 
-# 6. Minervini screener (With Volume Dry-Up)
-echo -e "\n[6/9] Running Minervini Screener with Volume Dry-Up..."
-$PYTHON_EXEC "$BASE_DIR/minervini_screener.py" --use-volume-dryup
+# 6. Minervini ST screener (With Volume Dry-Up)
+echo -e "\n[6/11] Running Minervini ST Screener with Volume Dry-Up..."
+$PYTHON_EXEC "$BASE_DIR/minervini_st_breakouts.py" --use-volume-dryup
 
-# 7. Qullamaggie screener
-echo -e "\n[7/9] Running Qullamaggie Screener..."
+# 7. Minervini LT screener
+echo -e "\n[7/11] Running Minervini LT Breakout Screener..."
+$PYTHON_EXEC "$BASE_DIR/minervini_lt_breakouts.py"
+
+# 8. Qullamaggie screener
+echo -e "\n[8/11] Running Qullamaggie Screener..."
 $PYTHON_EXEC "$BASE_DIR/qullamaggie_screener.py"
 
-# 8. Darvas screener
-echo -e "\n[8/9] Running Darvas Screener..."
+# 9. Darvas screener
+echo -e "\n[9/11] Running Darvas Screener..."
 $PYTHON_EXEC "$BASE_DIR/darvas_screener.py"
 
-# 9. Screener Results Tracker
-echo -e "\n[9/9] Running Screener Results Tracker..."
+# 10. Screener Results Tracker
+echo -e "\n[10/11] Running Screener Results Tracker..."
 $PYTHON_EXEC "$BASE_DIR/screener_results_tracker.py"
 
 echo -e "\n============================================================"
